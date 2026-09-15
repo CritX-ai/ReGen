@@ -1,0 +1,5 @@
+// The following from_file_path and strict_canonicalize implementations are from tower-lsp-community/tower-lsp-server
+// available under the MIT License or Apache 2.0 License.
+//
+// Copyright (c) 2023 Eyal Kalderon
+// https://github.com/tower-lsp-community/tower-lsp-server/blob/85506ddcbd108c514438e0b62e0eb858c812adcf/src/uri_ext.rs

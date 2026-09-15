@@ -1,0 +1,27 @@
+/* A self-contained poem: local type, local assets, no scripts. */
+:root {
+  color-scheme: dark;
+  color: #b9c2cf;
+  background: #0b0f14;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  line-height: 1.55;
+  scrollbar-color: #b9c2cf #0b0f14;
+}
+
+* { box-sizing: border-box; }
+body { max-width: 36rem; margin: 0 auto; padding: clamp(1.25rem, 5vw, 2rem); }
+h1 { color: #f5f7fa; font-size: clamp(1.25rem, 4vw, 1.5rem); font-weight: 400; line-height: 1.25; text-wrap: balance; margin: 0 0 1.25rem; }
+.verse { margin: 0; }
+.credit { color: #8fc7c7; max-width: 30rem; margin: 1.5rem 0 0; font-family: system-ui, sans-serif; font-size: 0.75rem; line-height: 1.5; }
+::selection { color: #0b0f14; background: #8fc7c7; }
+
+@media (max-width: 360px) {
+  :root { font-size: 16px; }
+}
+
+@media print {
+  :root { color-scheme: light; color: #111; background: #fff; font-size: 12pt; }
+  h1 { color: #111; }
+  .credit { color: #333; }
+}

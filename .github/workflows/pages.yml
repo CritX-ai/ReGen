@@ -1,0 +1,85 @@
+name: ReGen documentation on Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: regen-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build documentation with ReGen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pages: read
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: '1'
+      DOCS_OUTPUT: regen-docs-primary/site
+      DOCS_COMPARE: regen-docs-comparison/site
+    steps:
+      - name: Check out the triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Read configured Pages metadata
+        id: pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+        with:
+          enablement: false
+      - name: Require the configured canonical custom domain
+        env:
+          PAGES_BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          if [ "${PAGES_BASE_URL%/}" != "https://regen.critx.ai" ]; then
+            printf '%s\n' 'Configure the Pages custom domain as regen.critx.ai before publishing; repository-path URLs are not the production site.' >&2
+            exit 1
+          fi
+      - name: Install exact Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal
+      - name: Fetch the locked dependency graph
+        run: cargo +1.98.1 fetch --locked
+      - name: Build documentation and guide poem at independent roots
+        env:
+          PAGES_BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/regen-docs-primary" "$RUNNER_TEMP/regen-docs-comparison"
+          cargo +1.98.1 run --release --frozen --example build_docs -- --base-url "$PAGES_BASE_URL" --output "$RUNNER_TEMP/$DOCS_OUTPUT"
+          cargo +1.98.1 run --release --frozen --example build_docs -- --base-url "$PAGES_BASE_URL" --output "$RUNNER_TEMP/$DOCS_COMPARE"
+      - name: Check rendered documentation, poem, manifests, and repeatability
+        env:
+          PAGES_BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: python3 scripts/check_docs.py --site "$RUNNER_TEMP/$DOCS_OUTPUT" --base-url "$PAGES_BASE_URL" --compare "$RUNNER_TEMP/$DOCS_COMPARE"
+      - name: Upload only the generated static site
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0; nested upload-artifact is also SHA-pinned
+        with:
+          path: ${{ runner.temp }}/${{ env.DOCS_OUTPUT }}
+          name: github-pages
+          retention-days: 1
+          include-hidden-files: false
+
+  deploy:
+    name: Deploy main documentation to Pages
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy the generated artifact
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        with:
+          artifact_name: github-pages

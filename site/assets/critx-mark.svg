@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" role="img" aria-labelledby="title desc">
+  <title id="title">CritX.ai Proof Gate animated mark</title>
+  <desc id="desc">Two independent signal routes converge on an accountable central gate.</desc>
+  <metadata>
+CritX logo — expressly excluded from ReGen's WTFPL license.
+All rights reserved except reproduction, distribution and display of this
+unchanged logo only as part of unmodified copies of ReGen and its accompanying
+documentation, with this notice retained.
+Distribution of the logo as part of modified copies of ReGen or its
+documentation is prohibited without separate prior written permission from the
+rights holder. Modified copies must remove or replace the logo and must not
+state or imply affiliation with or endorsement by CritX. Standalone
+reuse, modification of the logo, or use as another project's branding also
+requires separate prior written permission.
+These restrictions apply to the logo, not to ReGen's WTFPL-licensed code and
+documentation. Uses permitted by applicable law remain unaffected.
+Full license details: https://regen.critx.ai/license/#critx-branding
+No trademark rights are granted.
+  </metadata>
+  <defs>
+    <linearGradient id="gate-forward" x1="4" y1="43" x2="43" y2="5" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9ca7b6"/>
+      <stop offset=".38" stop-color="#b9c2cf"/>
+      <stop offset=".7" stop-color="#f5f7fa"/>
+      <stop offset="1" stop-color="#9ca7b6"/>
+    </linearGradient>
+    <linearGradient id="gate-return" x1="44" y1="5" x2="5" y2="43" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9ca7b6"/>
+      <stop offset=".32" stop-color="#b9c2cf"/>
+      <stop offset=".68" stop-color="#f5f7fa"/>
+      <stop offset="1" stop-color="#9ca7b6"/>
+    </linearGradient>
+    <radialGradient id="gate-signal" cx="35%" cy="28%" r="76%">
+      <stop offset="0" stop-color="#f5f7fa"/>
+      <stop offset=".58" stop-color="#b9c2cf"/>
+      <stop offset="1" stop-color="#667180"/>
+    </radialGradient>
+    <filter id="gate-depth" x="-18%" y="-18%" width="136%" height="142%" color-interpolation-filters="sRGB">
+      <feDropShadow dx=".55" dy=".75" stdDeviation=".45" flood-color="#000000" flood-opacity=".72"/>
+    </filter>
+  </defs>
+  <style>
+    .rail,
+    .runner,
+    .gate-frame {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .rail {
+      stroke-width: 3;
+      filter: url(#gate-depth);
+    }
+    .rail--forward { stroke: #b9c2cf; stroke: url(#gate-forward); }
+    .rail--return { stroke: #b9c2cf; stroke: url(#gate-return); }
+    .runner {
+      stroke: #f5f7fa;
+      stroke-width: 3;
+      stroke-dasharray: 10 190;
+      opacity: 0;
+      animation: gate-arrival 4.8s cubic-bezier(.45, 0, .2, 1) 1 both;
+    }
+    .gate-frame {
+      stroke: #b9c2cf;
+      stroke-width: 1.6;
+      filter: url(#gate-depth);
+    }
+    .gate-signal {
+      fill: #b9c2cf;
+      fill: url(#gate-signal);
+      filter: url(#gate-depth);
+      opacity: 1;
+      animation: gate-proof 4.8s cubic-bezier(.22, 1, .36, 1) 1 both;
+    }
+    @keyframes gate-arrival {
+      0%, 12% { stroke-dashoffset: 10; opacity: 0; }
+      14% { opacity: .95; }
+      22% { stroke-dashoffset: -90; opacity: .95; }
+      24%, 100% { stroke-dashoffset: -100; opacity: 0; }
+    }
+    @keyframes gate-proof {
+      0%, 18% { opacity: .9; }
+      22%, 100% { opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .runner { display: none; animation: none; }
+      .gate-signal { animation: none; opacity: 1; }
+    }
+  </style>
+  <g>
+    <path class="rail rail--forward" d="M4 43V18Q4 14.5 6.5 12L12 6.5Q14.5 4 18 4H25.5Q28.5 4 30.5 6.5L42 19.5Q46 24 42 28.5L32.5 22"/>
+    <path class="runner" d="M4 43V18Q4 14.5 6.5 12L12 6.5Q14.5 4 18 4H25.5Q28.5 4 30.5 6.5L42 19.5Q46 24 42 28.5L32.5 22" pathLength="100"/>
+  </g>
+  <g transform="rotate(180 24 24)">
+    <path class="rail rail--return" d="M4 43V18Q4 14.5 6.5 12L12 6.5Q14.5 4 18 4H25.5Q28.5 4 30.5 6.5L42 19.5Q46 24 42 28.5L32.5 22"/>
+    <path class="runner" d="M4 43V18Q4 14.5 6.5 12L12 6.5Q14.5 4 18 4H25.5Q28.5 4 30.5 6.5L42 19.5Q46 24 42 28.5L32.5 22" pathLength="100"/>
+  </g>
+  <rect class="gate-frame" x="19" y="19" width="10" height="10" rx="1"/>
+  <rect class="gate-signal" x="22" y="22" width="4" height="4" rx=".4" transform="rotate(45 24 24)"/>
+</svg>

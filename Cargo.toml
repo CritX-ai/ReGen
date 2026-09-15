@@ -1,0 +1,108 @@
+[package]
+name = "regen-ssg"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.98.1"
+description = "Opinionated, reproducible multilingual static site generation with Tera and YAML"
+license = "WTFPL"
+readme = "README.md"
+repository = "https://github.com/CritX-ai/ReGen"
+documentation = "https://regen.critx.ai/"
+keywords = ["static-site", "multilingual", "tera", "reproducible"]
+categories = ["command-line-utilities", "web-programming"]
+# Root-anchored, literal public files only: no generated output, recovery state,
+# private website data, credentials, workflows, or build/tool caches.
+include = [
+    "/Cargo.toml",
+    "/Cargo.lock",
+    "/rust-toolchain.toml",
+    "/LICENSE",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/CONTRIBUTING.md",
+    "/SECURITY.md",
+    "/src/assets.rs",
+    "/src/config.rs",
+    "/src/content.rs",
+    "/src/files.rs",
+    "/src/lib.rs",
+    "/src/main.rs",
+    "/tests/generation.rs",
+    "/tests/unit/assets.rs",
+    "/tests/unit/files.rs",
+    "/tests/unit/rendering.rs",
+    "/examples/build_docs.rs",
+    "/examples/minimal/regen.toml",
+    "/examples/minimal/assets/mark.svg",
+    "/examples/minimal/assets/site.css",
+    "/examples/minimal/content/de/site.yaml",
+    "/examples/minimal/content/de/pages/index.yaml",
+    "/examples/minimal/content/en/site.yaml",
+    "/examples/minimal/content/en/pages/index.yaml",
+    "/examples/minimal/public/robots.txt",
+    "/examples/minimal/templates/base.html",
+    "/examples/minimal/templates/page.html",
+    "/docs/guide.md",
+    "/docs/architecture.md",
+    "/docs/deployment.md",
+    "/docs/license.md",
+    "/docs/releasing.md",
+    "/docs/testing.md",
+    "/scripts/smoke.py",
+    "/scripts/check_docs.py",
+    "/scripts/project_logo.py",
+    "/site/pages.json",
+    "/site/templates/architecture.html",
+    "/site/templates/page.html",
+    "/site/templates/pipeline.html",
+    "/site/templates/poem-example.html",
+    "/site/assets/docs.css",
+    "/site/assets/critx-mark.svg",
+    "/site/assets/github-mark.svg",
+    "/site/assets/regen-logo.svg",
+    "/site/assets/regen-logo-static.svg",
+    "/site/assets/regen-mark.svg",
+    "/site/assets/version.svg",
+    "/site/assets/fonts/ibm-plex-mono-latin-400.woff2",
+    "/site/assets/fonts/ibm-plex-sans-latin-variable.woff2",
+    "/site/assets/fonts/ibm-plex-ofl.txt",
+    "/site/assets/fonts/space-grotesk-latin-variable.woff2",
+    "/site/assets/fonts/space-grotesk-ofl.txt",
+    "/site/assets/fonts/provenance.json",
+]
+
+[lib]
+name = "regen"
+
+[[bin]]
+name = "regen"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "=1.0.104"
+clap = { version = "=4.6.5", features = ["derive"] }
+lightningcss = { version = "=1.0.0-alpha.72", default-features = false }
+minify-html = "=0.18.1"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.151"
+serde-saphyr = { version = "=1.2.0", default-features = false, features = ["deserialize"] }
+sha2 = "=0.10.9"
+tera = { version = "=2.4.0", default-features = false, features = ["preserve_order"] }
+toml = { version = "=1.1.6", default-features = false, features = ["parse", "serde"] }
+url = "=2.5.8"
+walkdir = "=2.5.0"
+
+[dev-dependencies]
+tempfile = "=3.27.0"
+pulldown-cmark = { version = "=0.13.4", default-features = false, features = ["html"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = "warn"

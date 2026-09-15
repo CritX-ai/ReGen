@@ -1,0 +1,12 @@
+[site]
+title = "ReGen example"
+base_url = "https://example.com"
+default_language = "en"
+
+[[languages]]
+code = "en"
+name = "English"
+
+[[languages]]
+code = "de"
+name = "Deutsch"

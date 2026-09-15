@@ -1,0 +1,258 @@
+name: ReGen verification and candidate preparation
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: regen-release
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: '1'
+
+jobs:
+  native:
+    name: Native ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            python: python3
+            executable: regen
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            python: python3
+            executable: regen
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+            python: python3
+            executable: regen
+          - runner: macos-15
+            target: aarch64-apple-darwin
+            python: python3
+            executable: regen
+          - runner: windows-2025
+            target: x86_64-pc-windows-msvc
+            python: python
+            executable: regen.exe
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            python: python
+            executable: regen.exe
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Preserve original source and notice bytes on Windows
+        if: runner.os == 'Windows'
+        run: git config --global core.autocrlf false
+      - name: Check out the triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Install exact native Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy --target '${{ matrix.target }}'
+      - name: Fetch the locked dependency graph
+        run: cargo +1.98.1 fetch --locked
+      - name: Check Rust formatting
+        run: cargo +1.98.1 fmt --all -- --check
+      - name: Check Clippy
+        run: cargo +1.98.1 clippy --frozen --all-targets --target '${{ matrix.target }}' -- -D warnings
+      - name: Run tests natively
+        run: cargo +1.98.1 test --frozen --all-targets --target '${{ matrix.target }}'
+      - name: Build release binary
+        run: cargo +1.98.1 build --frozen --release --target '${{ matrix.target }}'
+      - name: Generate the example and compare deterministic output
+        run: ${{ matrix.python }} scripts/smoke.py --binary 'target/${{ matrix.target }}/release/${{ matrix.executable }}' --target '${{ matrix.target }}' --site examples/minimal
+      - name: Package binary and original dependency notices
+        env:
+          TARGET: ${{ matrix.target }}
+          BINARY: target/${{ matrix.target }}/release/${{ matrix.executable }}
+        run: ${{ matrix.python }} scripts/package.py --target "$TARGET" --binary "$BINARY"
+      - name: Upload native packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-${{ matrix.target }}
+          path: release-artifacts/*
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  cargo-package:
+    name: Install packaged source and dry-run Cargo publication
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Install exact native Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal
+      - name: Fetch the locked dependency graph
+        run: cargo +1.98.1 fetch --locked
+      - name: Inspect source inventory and install the generated crate
+        run: python3 scripts/check_cargo.py --target x86_64-unknown-linux-gnu --publish-dry-run --output cargo-artifacts
+      - name: Retain the inspected crate and source inventory
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cargo-source
+          path: cargo-artifacts/*
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  documentation:
+    name: Verify documentation without deploying
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      DOCS_BASE_URL: https://regen.critx.ai/
+    steps:
+      - name: Check out the tested commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Install exact Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal
+      - name: Fetch the locked dependency graph
+        run: cargo +1.98.1 fetch --locked
+      - name: Build documentation at independent roots
+        run: |
+          mkdir -p "$RUNNER_TEMP/regen-docs-primary" "$RUNNER_TEMP/regen-docs-comparison"
+          cargo +1.98.1 run --release --frozen --example build_docs -- --base-url "$DOCS_BASE_URL" --output "$RUNNER_TEMP/regen-docs-primary/site"
+          cargo +1.98.1 run --release --frozen --example build_docs -- --base-url "$DOCS_BASE_URL" --output "$RUNNER_TEMP/regen-docs-comparison/site"
+      - name: Check rendered documentation and deterministic output
+        run: python3 scripts/check_docs.py --site "$RUNNER_TEMP/regen-docs-primary/site" --base-url "$DOCS_BASE_URL" --compare "$RUNNER_TEMP/regen-docs-comparison/site"
+
+  coverage:
+    name: Measure behavioral test coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out the tested commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Install isolated Linux syscall-fault tooling
+        run: sudo apt-get update && sudo apt-get install --yes strace
+      - name: Install pinned coverage tooling
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal --component llvm-tools-preview
+          cargo +1.98.1 install cargo-llvm-cov --version 0.9.1 --locked
+          python3 -m venv "$RUNNER_TEMP/regen-coverage"
+          "$RUNNER_TEMP/regen-coverage/bin/python" -m pip install --no-deps coverage==7.16.1
+      - name: Measure Rust production lines and regions
+        run: |
+          cargo +1.98.1 fetch --locked
+          cargo +1.98.1 llvm-cov --release --frozen --all-targets --json --output-path target/coverage/rust.json --ignore-filename-regex '/tests/|/examples/' -- --include-ignored
+      - name: Annotate uncovered Rust source
+        run: cargo +1.98.1 llvm-cov report --release --html --output-dir target/coverage/rust-html --ignore-filename-regex '/tests/|/examples/'
+      - name: Combine executions of each distinct Rust source region
+        run: python3 scripts/check_rust_coverage.py
+      - name: Measure offline release statements and branches
+        env:
+          COVERAGE_FILE: target/coverage/python.coverage
+        run: |
+          "$RUNNER_TEMP/regen-coverage/bin/python" -m coverage run --branch --source=scripts --omit='*/test_*.py' -m unittest discover -s scripts -p 'test_*.py'
+          "$RUNNER_TEMP/regen-coverage/bin/python" -m coverage json --include='*/release.py,*/check_cargo.py' -o target/coverage/python.json
+          "$RUNNER_TEMP/regen-coverage/bin/python" -m coverage report --include='*/release.py,*/check_cargo.py' --show-missing
+      - name: Summarize this commit's measured coverage
+        run: |
+          {
+            printf '## Rust executable source regions\n\n'
+            jq -r '
+              def metric: "\(.covered)/\(.count)";
+              "| Source | Covered regions |",
+              "| --- | --- |",
+              (.files[] | "| \(.filename | split("/") | last) | \(. | metric) |"),
+              "| **Total** | \(.totals | metric) |"
+            ' target/coverage/rust-source-regions.json
+            printf '\nCoverage combines the same source coordinates across binaries and generic instantiations. Native LLVM summaries below use best-instantiation counts instead; they are retained unchanged.\n\n## Native LLVM summary\n\n'
+            jq -r '
+              def metric: "\(.covered)/\(.count) (\((.percent * 10 | round) / 10)%)";
+              .data[0] |
+              "| Source | Lines | Regions |",
+              "| --- | --- | --- |",
+              (.files[] | "| \(.filename | split("/") | last) | \(.summary.lines | metric) | \(.summary.regions | metric) |"),
+              "| **Total** | \(.totals.lines | metric) | \(.totals.regions | metric) |"
+            ' target/coverage/rust.json
+            printf '\n## Offline release-tool coverage\n\n'
+            jq -r '
+              "| Source | Statements | Branches |",
+              "| --- | --- | --- |",
+              (.files | to_entries[] | .key as $name | .value.summary |
+                "| \($name) | \(.covered_lines)/\(.num_statements) (\((.percent_statements_covered * 10 | round) / 10)%) | \(.covered_branches)/\(.num_branches) (\((.percent_branches_covered * 10 | round) / 10)%) |")
+            ' target/coverage/python.json
+            printf '\nThe coverage artifact includes JSON and annotated Rust HTML. Rust totals exclude tests, the documentation example and dependencies; they do not report branch coverage.\n'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain coverage with the tested run
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage
+          path: target/coverage/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Require complete Rust production coverage
+        run: |
+          cargo +1.98.1 llvm-cov report --release --fail-uncovered-lines 0 --ignore-filename-regex '/tests/|/examples/'
+          jq -e '.totals.count > 0 and .totals.covered == .totals.count and (.uncovered | length) == 0' target/coverage/rust-source-regions.json
+
+  aggregate:
+    name: Verify archives and bind a release candidate
+    needs: [native, cargo-package, documentation, coverage]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.candidate.outputs.version }}
+    steps:
+      - name: Check out packaging scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Exercise offline release authorization and partial-state boundaries
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+      - name: Download every native package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: native-*
+          path: release-artifacts
+          merge-multiple: true
+          digest-mismatch: error
+      - name: Download the inspected Cargo source
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: cargo-source
+          path: release-artifacts
+          digest-mismatch: error
+      - name: Verify archive notices and assemble release assets
+        id: candidate
+        env:
+          TESTED_SHA: ${{ github.sha }}
+        run: python3 scripts/release.py --directory release-artifacts --commit "$TESTED_SHA"
+      - name: Upload complete release bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-bundle
+          path: release-artifacts/*
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+

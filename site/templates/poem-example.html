@@ -1,0 +1,48 @@
+<p class="poem-intro">No half-told stories: a missing translation stops the build before your current site changes. Fail-closed consistency checking enforces that successful builds are deployment-ready.</p>
+<fieldset class="poem-workflow">
+  <legend class="poem-legend">Explore the poem’s source, build, and site</legend>
+  <input class="poem-stage" type="radio" name="poem-stage" id="poem-stage-source" value="source" checked>
+  <label class="poem-stage-tab" for="poem-stage-source">1 Source</label>
+  <input class="poem-stage" type="radio" name="poem-stage" id="poem-stage-build" value="build">
+  <label class="poem-stage-tab" for="poem-stage-build">2 Build</label>
+  <input class="poem-stage" type="radio" name="poem-stage" id="poem-stage-site" value="site">
+  <label class="poem-stage-tab" for="poem-stage-site">3 Site</label>
+  <div class="poem-workflow-panels">
+    <fieldset class="poem-example">
+      <legend class="poem-legend">Poem language</legend>
+      <input class="poem-language" type="radio" name="poem-language" id="poem-language-en" value="en" checked>
+      <label class="poem-tab" id="poem-tab-en" for="poem-language-en" lang="en">English</label>
+      <input class="poem-language" type="radio" name="poem-language" id="poem-language-de" value="de">
+      <label class="poem-tab" id="poem-tab-de" for="poem-language-de" lang="de">Deutsch</label>
+      <section class="poem-workflow-panel poem-workflow-source" aria-label="Source">
+        <div class="poem-panel poem-panel-en" lang="en">
+          <p class="poem-file"><code>content/en/pages/index.yaml</code> · YAML excerpt · <a href="{{ site.repository_url }}/blob/main/examples/minimal/content/en/pages/index.yaml">Full file</a></p>
+          <pre class="poem-code"><code>{{ site.poem_en_source }}</code></pre>
+        </div>
+        <div class="poem-panel poem-panel-de" lang="de">
+          <p class="poem-file"><code>content/de/pages/index.yaml</code> · YAML-Ausschnitt · <a href="{{ site.repository_url }}/blob/main/examples/minimal/content/de/pages/index.yaml">Vollständige Datei</a></p>
+          <pre class="poem-code"><code>{{ site.poem_de_source }}</code></pre>
+        </div>
+      </section>
+      <section class="poem-workflow-panel poem-workflow-build" aria-label="Build">
+        <p class="poem-workflow-note">One build, both languages. From the repository root:</p>
+        <pre class="poem-command"><code>regen build --site examples/minimal</code></pre>
+        <p class="poem-file">Output in <code>examples/minimal/</code></p>
+        <ul class="poem-output-files">
+          <li><code>dist/index.html</code> · English</li>
+          <li><code>dist/de/index.html</code> · Deutsch</li>
+        </ul>
+      </section>
+      <section class="poem-workflow-panel poem-workflow-site" aria-label="Site">
+        <div class="poem-panel poem-panel-en" aria-labelledby="poem-tab-en" lang="en">
+          <iframe src="{{ site.poem_en_url }}" title="English poem" sandbox="allow-same-origin" loading="lazy" referrerpolicy="no-referrer"></iframe>
+          <p class="poem-source">Embedded URL <a href="{{ site.poem_en_url }}">{{ site.poem_en_url }}</a></p>
+        </div>
+        <div class="poem-panel poem-panel-de" aria-labelledby="poem-tab-de" lang="de">
+          <iframe src="{{ site.poem_de_url }}" title="Deutsches Gedicht" sandbox="allow-same-origin" loading="lazy" referrerpolicy="no-referrer"></iframe>
+          <p class="poem-source">Eingebettete URL <a href="{{ site.poem_de_url }}">{{ site.poem_de_url }}</a></p>
+        </div>
+      </section>
+    </fieldset>
+  </div>
+</fieldset>

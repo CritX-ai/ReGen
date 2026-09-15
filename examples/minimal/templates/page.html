@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ page.title }}</h1>
+<p class="verse">
+  {% for line in page.data.lines %}
+  {{ line }}{% if not loop.last %}<br>{% endif %}
+  {% endfor %}
+</p>
+<p class="credit">{{ page.data.credit }}</p>
+{% endblock %}

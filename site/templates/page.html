@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="{{ language.code }}" dir="{{ language.direction }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#05070a">
+  <title>{{ page.title }} — ReGen documentation</title>
+  <meta name="description" content="{{ page.description }}">
+  <link rel="canonical" href="{{ canonical_url }}">
+  {% for alternate in alternates %}
+  <link rel="alternate" hreflang="{{ alternate.code }}" href="{{ alternate.url }}">
+  {% endfor %}
+  <link rel="icon" href="{{ site_root }}brand/regen-mark.svg" type="image/svg+xml">
+  <link rel="preload" href="{{ asset_base }}/fonts/space-grotesk-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{{ asset_base }}/fonts/ibm-plex-sans-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{ asset_base }}/docs.css">
+</head>
+<body{% if page.slug == "" %} class="home-page"{% endif %}>
+  <a class="skip" href="#content">Skip to content</a>
+  <header class="site-header">
+    <a class="wordmark" href="{{ site_root }}" aria-label="CritX ReGen documentation home">
+      <img class="brand-mark" src="{{ asset_base }}/critx-mark.svg" width="48" height="48" alt="">
+      <span class="brand-name">CritX</span>
+      <span class="brand-product">ReGen <span class="brand-description">Documentation</span></span>
+    </a>
+    <nav class="header-links" aria-label="Project">
+      <a class="repository-link" href="{{ site.repository_url }}" aria-label="ReGen on GitHub" title="ReGen on GitHub"><img src="{{ asset_base }}/github-mark.svg" width="24" height="24" alt=""></a>
+      <span class="version">v{{ site.version }}</span>
+    </nav>
+  </header>
+
+  <details class="mobile-menu">
+    <summary>Documentation menu</summary>
+    <nav class="global-navigation" aria-label="Documentation">
+      {% for group in site.menu %}
+      <details class="nav-group"{% if group.title == page.data.menu_group %} open{% endif %}>
+        <summary>{{ group.title }}</summary>
+        <ul class="menu">
+          {% for item in group.items %}
+          <li><a href="{{ item.path }}"{% if item.path == current_path %} aria-current="page"{% endif %}>{{ item.title }}</a></li>
+          {% endfor %}
+        </ul>
+      </details>
+      {% endfor %}
+    </nav>
+  </details>
+
+  <div class="reading-layout">
+    <aside class="sidebar">
+      {% if page.data.toc or page.slug == "architecture" %}
+      <nav class="page-contents" aria-label="On this page">
+        <h2 class="nav-title">On this page</h2>
+        {% if page.slug == "architecture" %}
+        <ul class="toc diagram-toc">
+          <li><a href="#build-overview">Build overview</a></li>
+          <li><a href="#crate-map">Crate composition</a></li>
+          <li><a href="#input-gate">Validate inputs</a></li>
+          <li><a href="#translation-routes">Pair translations</a></li>
+          <li><a href="#rendered-output">Prepare output</a></li>
+          <li><a href="#output-replacement">Replace output</a></li>
+        </ul>
+        {% endif %}
+        <ul class="toc">
+          {% for heading in page.data.toc %}
+          {% if page.slug != "architecture" or heading.level == 2 %}
+          <li class="toc-level-{{ heading.level }}"><a href="#{{ heading.id }}">{{ heading.title }}</a></li>
+          {% endif %}
+          {% endfor %}
+        </ul>
+      </nav>
+      {% endif %}
+      <nav class="global-navigation" aria-label="Documentation">
+        <h2 class="nav-title">Documentation</h2>
+        {% for group in site.menu %}
+        <details class="nav-group"{% if group.title == page.data.menu_group %} open{% endif %}>
+          <summary>{{ group.title }}</summary>
+          <ul class="menu">
+            {% for item in group.items %}
+            <li><a href="{{ item.path }}"{% if item.path == current_path %} aria-current="page"{% endif %}>{{ item.title }}</a></li>
+            {% endfor %}
+          </ul>
+        </details>
+        {% endfor %}
+      </nav>
+    </aside>
+
+    <main id="content" tabindex="-1">
+      <article>
+        <header class="page-header">
+            <h1 id="{{ page.data.heading_id }}">{% if page.slug == "" %}<picture><source media="print, (prefers-reduced-motion: reduce)" srcset="{{ site_root }}brand/regen-logo-static.svg" type="image/svg+xml"><img class="regen-wordmark" src="{{ site_root }}brand/regen-logo.svg" width="420" height="145" alt="{{ page.title }}"></picture>{% else %}{{ page.title }}{% endif %}</h1>
+          {% if page.slug == "" %}
+          <p class="page-lead lead-curtain">
+            <span class="lead-curtain-magic">Black magic,</span>
+            <span class="lead-curtain-opening">
+              <svg class="lead-curtain-scene" viewBox="0 0 640 120" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <defs>
+                  <g id="regen-curtain-fold">
+                    <path class="curtain-cloth" d="M0 3Q35 19 66 5T130 7T194 5T258 9Q290 1 310 14C284 33 330 38 303 57S328 87 302 106Q270 123 241 109T179 112T117 109T54 111L0 117Z"/>
+                    <path class="curtain-pleats" d="M24 9C-2 31 51 44 18 63S46 96 21 114M73 8C42 28 101 48 70 67S96 93 72 113M123 8C93 33 151 41 121 64S147 96 119 112M175 8C146 28 204 47 174 67S200 92 173 111M227 9C196 31 257 43 226 64S251 97 224 112M277 10C247 34 305 42 275 66S299 95 274 112"/>
+                    <path class="curtain-seams" d="M24 9C-2 31 51 44 18 63S46 96 21 114M123 8C93 33 151 41 121 64S147 96 119 112M227 9C196 31 257 43 226 64S251 97 224 112" vector-effect="non-scaling-stroke"/>
+                    <path class="curtain-edge" d="M0 3Q35 19 66 5T130 7T194 5T258 9Q290 1 310 14C284 33 330 38 303 57S328 87 302 106Q270 123 241 109T179 112T117 109T54 111L0 117" vector-effect="non-scaling-stroke"/>
+                  </g>
+                </defs>
+                <g class="curtain-panel curtain-left curtain-arrival"><use href="#regen-curtain-fold"/></g>
+                <g class="curtain-panel curtain-right curtain-arrival"><use href="#regen-curtain-fold" transform="translate(640 0) scale(-1 1)"/></g>
+                <g class="curtain-panel curtain-left curtain-replay"><use href="#regen-curtain-fold"/></g>
+                <g class="curtain-panel curtain-right curtain-replay"><use href="#regen-curtain-fold" transform="translate(640 0) scale(-1 1)"/></g>
+                {% for mode in ["arrival", "replay"] %}
+                <g class="confetti-{{ mode }}">
+                  {% for position in [24, 58, 97, 128, 170, 203, 248, 282, 326, 359, 403, 436, 480, 517, 552, 591, 619] %}
+                  <rect class="confetti-piece" x="{{ position }}" y="-16" width="5" height="13"/>
+                  {% endfor %}
+                </g>
+                {% endfor %}
+              </svg>
+              <span class="lead-curtain-words">with the curtains open.</span>
+            </span>
+            <span class="lead-curtain-fact">An opinionated, battle-tested static site generator in Rust.</span>
+          </p>
+          {% endif %}
+        </header>
+        {% if page.data.toc or page.slug == "architecture" %}
+        <details class="mobile-contents">
+          <summary>On this page</summary>
+          <nav aria-label="On this page">
+            {% if page.slug == "architecture" %}
+            <ul class="toc diagram-toc">
+              <li><a href="#build-overview">Build overview</a></li>
+              <li><a href="#crate-map">Crate composition</a></li>
+              <li><a href="#input-gate">Validate inputs</a></li>
+              <li><a href="#translation-routes">Pair translations</a></li>
+              <li><a href="#rendered-output">Prepare output</a></li>
+              <li><a href="#output-replacement">Replace output</a></li>
+            </ul>
+            {% endif %}
+            <ul class="toc">
+              {% for heading in page.data.toc %}
+              {% if page.slug != "architecture" or heading.level == 2 %}
+              <li class="toc-level-{{ heading.level }}"><a href="#{{ heading.id }}">{{ heading.title }}</a></li>
+              {% endif %}
+              {% endfor %}
+            </ul>
+          </nav>
+        </details>
+        {% endif %}
+        {% if page.slug == "" %}
+        <div class="home-overview">
+          {% include "pipeline.html" %}
+        </div>
+        {% elif page.slug == "architecture" %}
+        {% include "architecture.html" %}
+        {% endif %}
+        <div class="prose">{{ page.data.body_html | safe }}</div>
+      </article>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <p>Built with ReGen</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "origin": "Unmodified font snapshots from the CritX brand font distribution.",
+  "license": "SIL Open Font License 1.1; original notices accompany the fonts.",
+  "files": [
+    {
+      "file": "space-grotesk-latin-variable.woff2",
+      "sha256": "0640890476fc1198ab4de571fb658de443c4d85b66466ec09534a8737ab1ce9d",
+      "family": "Space Grotesk",
+      "upstream": "https://github.com/floriankarsten/space-grotesk",
+      "license_file": "space-grotesk-ofl.txt"
+    },
+    {
+      "file": "ibm-plex-sans-latin-variable.woff2",
+      "sha256": "e2291e842cf5af167122a22881a740c7f2dda7716f1e8cd76680264f4a859470",
+      "family": "IBM Plex Sans",
+      "upstream": "https://github.com/IBM/plex",
+      "license_file": "ibm-plex-ofl.txt"
+    },
+    {
+      "file": "ibm-plex-mono-latin-400.woff2",
+      "sha256": "08949f728dc52d528e69b1667d15c89a5686a4ee9a296ff90983985f99c380f7",
+      "family": "IBM Plex Mono",
+      "upstream": "https://github.com/IBM/plex",
+      "license_file": "ibm-plex-ofl.txt"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+title: Wanderer’s Night-Song II
+description: Goethe’s evening poem in Henry Wadsworth Longfellow’s English translation.
+template: page.html
+slug: ""
+data:
+  lines:
+    - "O'er all the hill-tops"
+    - "Is quiet now,"
+    - "In all the tree-tops"
+    - "Hearest thou"
+    - "Hardly a breath;"
+    - "The birds are asleep in the trees:"
+    - "Wait; soon like these"
+    - "Thou too shalt rest."
+  credit: Johann Wolfgang von Goethe · Translated by Henry Wadsworth Longfellow
+  source_url: https://www.gutenberg.org/files/1365/1365-h/1365-h.htm#chap574
+  source_label: "The Complete Poetical Works of Henry Wadsworth Longfellow, Household Edition, Houghton Mifflin, Boston, 1902: “Wanderer’s Night-Songs”, II (Project Gutenberg)."
+  rights: "Public domain in the United States (published in 1902, before 1931) and in Germany (more than 70 years after the deaths of Goethe in 1832 and Longfellow in 1882)."

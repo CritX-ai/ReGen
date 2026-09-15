@@ -1,0 +1,2 @@
+The implementation is from [sonic-rs](https://github.com/cloudwego/sonic-rs); we
+only take the string escaping part to avoid the abstraction overhead.

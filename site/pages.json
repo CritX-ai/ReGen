@@ -1,0 +1,12 @@
+[
+  {"source": "README.md", "slug": "", "title": "ReGen", "group": "Learn, build, ship"},
+  {"source": "docs/guide.md", "slug": "guide", "title": "User guide", "group": "Learn, build, ship"},
+  {"source": "docs/deployment.md", "slug": "deployment", "title": "Deployment", "group": "Learn, build, ship"},
+  {"source": "docs/architecture.md", "slug": "architecture", "title": "Architecture", "group": "Learn, build, ship"},
+  {"source": "docs/releasing.md", "slug": "releasing", "title": "Distribution", "group": "Project"},
+  {"source": "docs/testing.md", "slug": "testing", "title": "Testing", "group": "Project"},
+  {"source": "SECURITY.md", "slug": "security", "title": "Security", "group": "Project"},
+  {"source": "CONTRIBUTING.md", "slug": "contributing", "title": "Contribution policy", "group": "Project"},
+  {"source": "CHANGELOG.md", "slug": "changelog", "title": "Changelog", "group": "Project"},
+  {"source": "docs/license.md", "slug": "license", "title": "License", "group": "Project"}
+]

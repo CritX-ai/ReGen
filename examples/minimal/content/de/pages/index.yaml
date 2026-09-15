@@ -1,0 +1,18 @@
+title: Ein Gleiches
+description: Goethes Abendgedicht „Ueber allen Gipfeln“ in der Ausgabe letzter Hand von 1827.
+template: page.html
+slug: ""
+data:
+  lines:
+    - "Ueber allen Gipfeln"
+    - "Ist Ruh’,"
+    - "In allen Wipfeln"
+    - "Spürest du"
+    - "Kaum einen Hauch;"
+    - "Die Vögelein schweigen im Walde."
+    - "Warte nur, balde"
+    - "Ruhest du auch."
+  credit: Von Johann Wolfgang von Goethe · Deutsches Original
+  source_url: https://de.wikisource.org/wiki/Ein_Gleiches
+  source_label: "Goethe’s Werke, vollständige Ausgabe letzter Hand, Band 1, J. G. Cotta’sche Buchhandlung, Stuttgart und Tübingen, 1827, S. 99: „Ein Gleiches“ (Wikisource, mit Faksimile)."
+  rights: "Gemeinfrei in Deutschland (Goethe starb 1832, vor mehr als 70 Jahren) und in den USA (1827 und damit vor 1931 veröffentlicht). Historische Schreibweise der Quelle beibehalten."

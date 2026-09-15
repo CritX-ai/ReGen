@@ -1,0 +1,112 @@
+# Dormant in candidate A. Activate only by moving this unchanged file to
+# .github/workflows/release.yml in A's sole child B; release.py verifies that move.
+name: ReGen reviewed candidate publication
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Separate reviewed remote action (never automatically retried)
+        required: true
+        type: choice
+        options:
+          - draft
+          - publish-crate
+          - publish-github
+      release_version:
+        description: Exact original package version, e.g. 1.0.0
+        required: true
+        type: string
+      candidate_run:
+        description: Successful original build.yml run ID at candidate A (not B)
+        required: true
+        type: string
+      candidate_sha:
+        description: Full original tested candidate A commit SHA (activation B's sole parent)
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: regen-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Review and execute one release action
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      actions: read
+    environment:
+      name: release
+    env:
+      GH_REPO: ${{ github.repository }}
+      REGEN_RELEASE_VERSION: ${{ vars.REGEN_RELEASE_VERSION }}
+      RELEASE_VERSION: ${{ inputs.release_version }}
+      CANDIDATE_RUN: ${{ inputs.candidate_run }}
+      CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+      CARGO_TERM_COLOR: always
+    steps:
+      - name: Fetch activation history without executing candidate-controlled code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Bind the candidate input to activation B's sole parent before checkout
+        run: |
+          python3 - <<'PY'
+          import os
+          import subprocess
+          activation, candidate = os.environ["GITHUB_SHA"], os.environ["CANDIDATE_SHA"]
+          parents = subprocess.check_output(["git", "rev-list", "--parents", "-n", "1", activation], text=True).split()
+          if parents != [activation, candidate]:
+              raise SystemExit("candidate_sha must be activation B's sole parent; no candidate code executed")
+          PY
+      - name: Check out original candidate A, retaining activation B in GITHUB_SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Download the original complete candidate, never B's rebuild
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-bundle
+          path: release-artifacts
+          run-id: ${{ inputs.candidate_run }}
+          github-token: ${{ github.token }}
+          digest-mismatch: error
+      - name: Verify candidate, completed run, exact activation and protected main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/release.py --directory release-artifacts --commit "$CANDIDATE_SHA" --operation authorize --release-version "$RELEASE_VERSION" --candidate-run "$CANDIDATE_RUN"
+      - name: Install exact Rust toolchain without publication credentials
+        if: inputs.operation == 'publish-crate'
+        run: rustup toolchain install 1.98.1 --profile minimal
+      - name: Fetch original locked dependencies without publication credentials
+        if: inputs.operation == 'publish-crate'
+        run: cargo +1.98.1 fetch --locked
+      - name: Dry-run original Cargo source without publication credentials
+        if: inputs.operation == 'publish-crate'
+        run: python3 scripts/release.py --directory release-artifacts --commit "$CANDIDATE_SHA" --operation check-publish
+      - name: Create and verify the original candidate's tag and draft assets
+        if: inputs.operation == 'draft'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/release.py --directory release-artifacts --commit "$CANDIDATE_SHA" --operation draft --release-version "$RELEASE_VERSION" --candidate-run "$CANDIDATE_RUN"
+      - name: Upload the byte-matched original crate without dependency builds
+        if: inputs.operation == 'publish-crate'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: python3 scripts/release.py --directory release-artifacts --commit "$CANDIDATE_SHA" --operation publish-crate --release-version "$RELEASE_VERSION" --candidate-run "$CANDIDATE_RUN"
+      - name: Publish only the existing byte-verified GitHub draft
+        if: inputs.operation == 'publish-github'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/release.py --directory release-artifacts --commit "$CANDIDATE_SHA" --operation publish-github --release-version "$RELEASE_VERSION" --candidate-run "$CANDIDATE_RUN"

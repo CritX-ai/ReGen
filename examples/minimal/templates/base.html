@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="{{ language.code }}" dir="{{ language.direction }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.title }}</title>
+  <meta name="description" content="{{ page.description }}">
+  <link rel="canonical" href="{{ canonical_url }}">
+  {% for alternate in alternates %}
+  <link rel="alternate" hreflang="{{ alternate.code }}" href="{{ alternate.url }}">
+  {% endfor %}
+  <link rel="icon" href="{{ asset_base }}/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ asset_base }}/site.css">
+</head>
+<body>
+  <main id="content">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

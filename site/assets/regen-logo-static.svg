@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="145" viewBox="0 0 504 174" role="img" aria-labelledby="title description">
+  <title id="title">ReGen — Rust-powered reproducible generation</title>
+  <desc id="description">A copper-gradient R anchors silver eGen letters. Cyan strokes flow through eGen in motion; the static composition keeps the G-upper-arch highlight and its fading trail in the first e and G, leaving the final e and n plain silver.</desc>
+  <metadata>Lettering based on Space Grotesk, weight 700, tracking -0.04em; custom R with a broad stem, chamfered crown, and diagonal leg. Source WOFF2 SHA256: 0640890476fc1198ab4de571fb658de443c4d85b66466ec09534a8737ab1ce9d. Original wordmark artwork; not the Rust project logo. Static keyframe at 557.349438889 ms; forward head at 236.670327020 of 1000 path units, coordinate (286, 68). Bright segment: 110 units. Additional fading tail: 220 units. Selected static option B. Static trail restricted to the first e and G; final e and n remain silver.</metadata>
+  <defs>
+    <linearGradient id="copper" gradientUnits="userSpaceOnUse" x1="30" y1="142" x2="114" y2="30">
+      <stop offset="0" stop-color="rgb(193, 128, 85)" class="copper-shade" />
+      <stop offset="0.55" stop-color="rgb(216, 137, 88)" />
+      <stop offset="1" stop-color="rgb(220, 158, 112)" class="copper-light" />
+    </linearGradient>
+    <path id="egen" d="M162.08 144.24Q150.24 144.24 141.2 139.2Q132.16 134.16 127.12 124.96Q122.08 115.76 122.08 103.28V101.36Q122.08 88.88 127.04 79.68Q132 70.48 140.96 65.44Q149.92 60.4 161.76 60.4Q173.44 60.4 182.08 65.6Q190.72 70.8 195.52 80Q200.32 89.2 200.32 101.36V108.24H142.56Q142.88 116.4 148.64 121.52Q154.4 126.64 162.72 126.64Q171.2 126.64 175.2 122.96Q179.2 119.28 181.28 114.8L197.76 123.44Q195.52 127.6 191.28 132.48Q187.04 137.36 180 140.8Q172.96 144.24 162.08 144.24ZM142.72 93.2H179.84Q179.2 86.32 174.32 82.16Q169.44 78 161.6 78Q153.44 78 148.64 82.16Q143.84 86.32 142.72 93.2Z M249.92 144.24Q238.4 144.24 229.04 139.04Q219.68 133.84 214.16 123.84Q208.64 113.84 208.64 99.44V72.56Q208.64 50.96 220.8 39.36Q232.96 27.76 253.76 27.76Q274.4 27.76 285.68 38.72Q296.96 49.68 296.96 68.4V69.04H276.16V67.76Q276.16 61.84 273.68 57.04Q271.2 52.24 266.24 49.44Q261.28 46.64 253.76 46.64Q242.56 46.64 236.16 53.52Q229.76 60.4 229.76 72.24V99.76Q229.76 111.44 236.16 118.56Q242.56 125.68 254.08 125.68Q265.6 125.68 270.88 119.6Q276.16 113.52 276.16 104.24V102.64H249.6V84.72H296.96V142H277.44V131.28H274.56Q273.44 134 270.96 137.04Q268.48 140.08 263.52 142.16Q258.56 144.24 249.92 144.24Z M347.52 144.24Q335.68 144.24 326.64 139.2Q317.6 134.16 312.56 124.96Q307.52 115.76 307.52 103.28V101.36Q307.52 88.88 312.48 79.68Q317.44 70.48 326.4 65.44Q335.36 60.4 347.2 60.4Q358.88 60.4 367.52 65.6Q376.16 70.8 380.96 80Q385.76 89.2 385.76 101.36V108.24H328Q328.32 116.4 334.08 121.52Q339.84 126.64 348.16 126.64Q356.64 126.64 360.64 122.96Q364.64 119.28 366.72 114.8L383.2 123.44Q380.96 127.6 376.72 132.48Q372.48 137.36 365.44 140.8Q358.4 144.24 347.52 144.24ZM328.16 93.2H365.28Q364.64 86.32 359.76 82.16Q354.88 78 347.04 78Q338.88 78 334.08 82.16Q329.28 86.32 328.16 93.2Z M397.28 142V62.64H417.12V73.04H420Q421.92 68.88 427.2 65.12Q432.48 61.36 443.2 61.36Q452.48 61.36 459.44 65.6Q466.4 69.84 470.24 77.28Q474.08 84.72 474.08 94.64V142H453.92V96.24Q453.92 87.28 449.52 82.8Q445.12 78.32 436.96 78.32Q427.68 78.32 422.56 84.48Q417.44 90.64 417.44 101.68V142Z" />
+    <clipPath id="letter-mask">
+      <use href="#egen" />
+    </clipPath>
+    <path id="infinity" pathLength="1000" d="M133 100C133 122 144 135 162 135C188 135 208 113 217 94C219 88 219 79 219 72C219 49 232 37 254 37C275 37 286 49 286 68C286 84 318 82 318 100C318 122 330 135 348 135C374 135 397 112 407 91C413 77 423 70 438 70C455 70 464 79 464 98V134C464 159 407 159 407 134V102C407 87 375 116 375 100C375 80 364 69 347 69C328 69 318 81 318 100C305 100 287 88 287 104C287 123 275 135 254 135C231 135 219 122 219 101C219 86 190 116 190 99C190 80 179 69 162 69C143 69 133 81 133 100Z" />
+    <mask id="trail-fade" maskUnits="userSpaceOnUse" x="120" y="0" width="180" height="174" mask-type="alpha" fill="none" stroke="white" stroke-width="24" stroke-linecap="round">
+      <use href="#infinity" stroke-dasharray="330.000000 170.000000" stroke-dashoffset="93.329672980" stroke-opacity="0.0044871" />
+      <use href="#infinity" stroke-dasharray="326.507937 173.492063" stroke-dashoffset="89.837609488" stroke-opacity="0.0065910" />
+      <use href="#infinity" stroke-dasharray="323.015873 176.984127" stroke-dashoffset="86.345545996" stroke-opacity="0.0077536" />
+      <use href="#infinity" stroke-dasharray="319.523810 180.476190" stroke-dashoffset="82.853482504" stroke-opacity="0.0086501" />
+      <use href="#infinity" stroke-dasharray="316.031746 183.968254" stroke-dashoffset="79.361419012" stroke-opacity="0.0094116" />
+      <use href="#infinity" stroke-dasharray="312.539683 187.460317" stroke-dashoffset="75.869355520" stroke-opacity="0.0100920" />
+      <use href="#infinity" stroke-dasharray="309.047619 190.952381" stroke-dashoffset="72.377292027" stroke-opacity="0.0107197" />
+      <use href="#infinity" stroke-dasharray="305.555556 194.444444" stroke-dashoffset="68.885228535" stroke-opacity="0.0113118" />
+      <use href="#infinity" stroke-dasharray="302.063492 197.936508" stroke-dashoffset="65.393165043" stroke-opacity="0.0118794" />
+      <use href="#infinity" stroke-dasharray="298.571429 201.428571" stroke-dashoffset="61.901101551" stroke-opacity="0.0124304" />
+      <use href="#infinity" stroke-dasharray="295.079365 204.920635" stroke-dashoffset="58.409038059" stroke-opacity="0.0129708" />
+      <use href="#infinity" stroke-dasharray="291.587302 208.412698" stroke-dashoffset="54.916974567" stroke-opacity="0.0135050" />
+      <use href="#infinity" stroke-dasharray="288.095238 211.904762" stroke-dashoffset="51.424911075" stroke-opacity="0.0140368" />
+      <use href="#infinity" stroke-dasharray="284.603175 215.396825" stroke-dashoffset="47.932847583" stroke-opacity="0.0145692" />
+      <use href="#infinity" stroke-dasharray="281.111111 218.888889" stroke-dashoffset="44.440784091" stroke-opacity="0.0151051" />
+      <use href="#infinity" stroke-dasharray="277.619048 222.380952" stroke-dashoffset="40.948720599" stroke-opacity="0.0156468" />
+      <use href="#infinity" stroke-dasharray="274.126984 225.873016" stroke-dashoffset="37.456657107" stroke-opacity="0.0161965" />
+      <use href="#infinity" stroke-dasharray="270.634921 229.365079" stroke-dashoffset="33.964593615" stroke-opacity="0.0167564" />
+      <use href="#infinity" stroke-dasharray="267.142857 232.857143" stroke-dashoffset="30.472530123" stroke-opacity="0.0173285" />
+      <use href="#infinity" stroke-dasharray="263.650794 236.349206" stroke-dashoffset="26.980466631" stroke-opacity="0.0179149" />
+      <use href="#infinity" stroke-dasharray="260.158730 239.841270" stroke-dashoffset="23.488403139" stroke-opacity="0.0185174" />
+      <use href="#infinity" stroke-dasharray="256.666667 243.333333" stroke-dashoffset="19.996339647" stroke-opacity="0.0191384" />
+      <use href="#infinity" stroke-dasharray="253.174603 246.825397" stroke-dashoffset="16.504276154" stroke-opacity="0.0197798" />
+      <use href="#infinity" stroke-dasharray="249.682540 250.317460" stroke-dashoffset="13.012212662" stroke-opacity="0.0204439" />
+      <use href="#infinity" stroke-dasharray="246.190476 253.809524" stroke-dashoffset="9.520149170" stroke-opacity="0.0211331" />
+      <use href="#infinity" stroke-dasharray="242.698413 257.301587" stroke-dashoffset="6.028085678" stroke-opacity="0.0218501" />
+      <use href="#infinity" stroke-dasharray="239.206349 260.793651" stroke-dashoffset="2.536022186" stroke-opacity="0.0225975" />
+      <use href="#infinity" stroke-dasharray="235.714286 264.285714" stroke-dashoffset="-0.956041306" stroke-opacity="0.0233783" />
+      <use href="#infinity" stroke-dasharray="232.222222 267.777778" stroke-dashoffset="-4.448104798" stroke-opacity="0.0241958" />
+      <use href="#infinity" stroke-dasharray="228.730159 271.269841" stroke-dashoffset="-7.940168290" stroke-opacity="0.0250537" />
+      <use href="#infinity" stroke-dasharray="225.238095 274.761905" stroke-dashoffset="-11.432231782" stroke-opacity="0.0259558" />
+      <use href="#infinity" stroke-dasharray="221.746032 278.253968" stroke-dashoffset="-14.924295274" stroke-opacity="0.0269066" />
+      <use href="#infinity" stroke-dasharray="218.253968 281.746032" stroke-dashoffset="-18.416358766" stroke-opacity="0.0279111" />
+      <use href="#infinity" stroke-dasharray="214.761905 285.238095" stroke-dashoffset="-21.908422258" stroke-opacity="0.0289747" />
+      <use href="#infinity" stroke-dasharray="211.269841 288.730159" stroke-dashoffset="-25.400485750" stroke-opacity="0.0301038" />
+      <use href="#infinity" stroke-dasharray="207.777778 292.222222" stroke-dashoffset="-28.892549242" stroke-opacity="0.0313054" />
+      <use href="#infinity" stroke-dasharray="204.285714 295.714286" stroke-dashoffset="-32.384612734" stroke-opacity="0.0325875" />
+      <use href="#infinity" stroke-dasharray="200.793651 299.206349" stroke-dashoffset="-35.876676226" stroke-opacity="0.0339595" />
+      <use href="#infinity" stroke-dasharray="197.301587 302.698413" stroke-dashoffset="-39.368739719" stroke-opacity="0.0354320" />
+      <use href="#infinity" stroke-dasharray="193.809524 306.190476" stroke-dashoffset="-42.860803211" stroke-opacity="0.0370172" />
+      <use href="#infinity" stroke-dasharray="190.317460 309.682540" stroke-dashoffset="-46.352866703" stroke-opacity="0.0387295" />
+      <use href="#infinity" stroke-dasharray="186.825397 313.174603" stroke-dashoffset="-49.844930195" stroke-opacity="0.0405859" />
+      <use href="#infinity" stroke-dasharray="183.333333 316.666667" stroke-dashoffset="-53.336993687" stroke-opacity="0.0426060" />
+      <use href="#infinity" stroke-dasharray="179.841270 320.158730" stroke-dashoffset="-56.829057179" stroke-opacity="0.0448137" />
+      <use href="#infinity" stroke-dasharray="176.349206 323.650794" stroke-dashoffset="-60.321120671" stroke-opacity="0.0472372" />
+      <use href="#infinity" stroke-dasharray="172.857143 327.142857" stroke-dashoffset="-63.813184163" stroke-opacity="0.0499108" />
+      <use href="#infinity" stroke-dasharray="169.365079 330.634921" stroke-dashoffset="-67.305247655" stroke-opacity="0.0528765" />
+      <use href="#infinity" stroke-dasharray="165.873016 334.126984" stroke-dashoffset="-70.797311147" stroke-opacity="0.0561860" />
+      <use href="#infinity" stroke-dasharray="162.380952 337.619048" stroke-dashoffset="-74.289374639" stroke-opacity="0.0599041" />
+      <use href="#infinity" stroke-dasharray="158.888889 341.111111" stroke-dashoffset="-77.781438131" stroke-opacity="0.0641126" />
+      <use href="#infinity" stroke-dasharray="155.396825 344.603175" stroke-dashoffset="-81.273501623" stroke-opacity="0.0689169" />
+      <use href="#infinity" stroke-dasharray="151.904762 348.095238" stroke-dashoffset="-84.765565115" stroke-opacity="0.0744547" />
+      <use href="#infinity" stroke-dasharray="148.412698 351.587302" stroke-dashoffset="-88.257628607" stroke-opacity="0.0809096" />
+      <use href="#infinity" stroke-dasharray="144.920635 355.079365" stroke-dashoffset="-91.749692100" stroke-opacity="0.0885319" />
+      <use href="#infinity" stroke-dasharray="141.428571 358.571429" stroke-dashoffset="-95.241755592" stroke-opacity="0.0976723" />
+      <use href="#infinity" stroke-dasharray="137.936508 362.063492" stroke-dashoffset="-98.733819084" stroke-opacity="0.1088369" />
+      <use href="#infinity" stroke-dasharray="134.444444 365.555556" stroke-dashoffset="-102.225882576" stroke-opacity="0.1227851" />
+      <use href="#infinity" stroke-dasharray="130.952381 369.047619" stroke-dashoffset="-105.717946068" stroke-opacity="0.1407102" />
+      <use href="#infinity" stroke-dasharray="127.460317 372.539683" stroke-dashoffset="-109.210009560" stroke-opacity="0.1646009" />
+      <use href="#infinity" stroke-dasharray="123.968254 376.031746" stroke-dashoffset="-112.702073052" stroke-opacity="0.1980371" />
+      <use href="#infinity" stroke-dasharray="120.476190 379.523810" stroke-dashoffset="-116.194136544" stroke-opacity="0.2481784" />
+      <use href="#infinity" stroke-dasharray="116.984127 383.015873" stroke-dashoffset="-119.686200036" stroke-opacity="0.3317302" />
+      <use href="#infinity" stroke-dasharray="113.492063 386.507937" stroke-dashoffset="-123.178263528" stroke-opacity="0.4988095" />
+      <use href="#infinity" stroke-dasharray="110.000000 390.000000" stroke-dashoffset="-126.670327020" stroke-opacity="1.0000000" />
+    </mask>
+  </defs>
+  <path fill="#05070A" d="M0 0H504V174H0Z" />
+  <g id="rust-r">
+    <path fill="url(#copper)" d="M30.56 142V34.8L35.36 30H77.6C101.12 30 114.08 43.12 114.08 63.04C114.08 78.4 106.4 89.04 92.96 94.08L115.2 142H91.84L71.68 98.64H51.68V142ZM51.68 49.2V79.44H75.84C86.88 79.44 92.96 73.52 92.96 64.4C92.96 54.8 86.88 49.2 75.84 49.2Z" />
+  </g>
+  <use href="#egen" fill="#B9C2CF" />
+  <g clip-path="url(#letter-mask)" fill="none" stroke="#A7F0F2" stroke-width="24" stroke-linecap="round">
+    <g class="static-trail">
+      <use href="#infinity" mask="url(#trail-fade)" />
+    </g>
+    <g class="moving-parts" display="none">
+      <use class="flow" href="#infinity" stroke-dasharray="110 390" stroke-dashoffset="0" />
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" role="img" aria-labelledby="title description">
+  <title id="title">ReGen R</title>
+  <desc id="description">The copper-gradient R from the ReGen wordmark, with a broad stem, chamfered crown, and diagonal leg.</desc>
+  <defs>
+    <linearGradient id="copper" gradientUnits="userSpaceOnUse" x1="30" y1="142" x2="114" y2="30">
+      <stop offset="0" stop-color="rgb(193, 128, 85)" />
+      <stop offset="0.55" stop-color="rgb(216, 137, 88)" />
+      <stop offset="1" stop-color="rgb(220, 158, 112)" />
+    </linearGradient>
+  </defs>
+  <rect width="160" height="160" rx="18" fill="#05070A" />
+  <g id="rust-r" transform="translate(7.12 -6)">
+    <path fill="url(#copper)" d="M30.56 142V34.8L35.36 30H77.6C101.12 30 114.08 43.12 114.08 63.04C114.08 78.4 106.4 89.04 92.96 94.08L115.2 142H91.84L71.68 98.64H51.68V142ZM51.68 49.2V79.44H75.84C86.88 79.44 92.96 73.52 92.96 64.4C92.96 54.8 86.88 49.2 75.84 49.2Z" />
+  </g>
+</svg>

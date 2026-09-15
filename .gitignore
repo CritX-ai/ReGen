@@ -1,0 +1,7 @@
+/target/
+/release-artifacts/
+**/dist/
+**/.regen-stage/
+**/.regen-previous/
+**/__pycache__/
+*.py[cod]
