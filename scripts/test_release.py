@@ -83,7 +83,8 @@ class ReleaseSafety(unittest.TestCase):
             "deployment_branch_policy": {"protected_branches": False, "custom_branch_policies": True},
         }
         self.remote = {
-            "repos/CritX-ai/ReGen": {"permissions": {"push": True}},
+            # Actions installation-token responses omit per-user permissions.
+            "repos/CritX-ai/ReGen": {"full_name": "CritX-ai/ReGen"},
             "repos/CritX-ai/ReGen/actions/runs/10": {"id": 10, "run_attempt": 1, "status": "completed", "conclusion": "success",
                 "head_sha": self.candidate["commit"], "head_branch": "main", "path": ".github/workflows/build.yml",
                 "head_repository": {"full_name": "CritX-ai/ReGen"}, "event": "push"},
@@ -134,11 +135,11 @@ class ReleaseSafety(unittest.TestCase):
                     release.remote_operation(Path("unused"), self.candidate, "authorize", "1.0.0", "10")
         self.process.assert_not_called()
 
-    def test_auto_created_environment_and_hidden_drafts_fail_closed(self):
+    def test_auto_created_or_wrong_repository_environment_fails_closed(self):
         with patch.object(release, "github", side_effect=self.api):
             with patch.dict(self.protection, {"deployment_branch_policy": None}), self.assertRaises(RuntimeError):
                 release.authorize(self.candidate, "draft", "1.0.0", "10")
-            self.remote["repos/CritX-ai/ReGen"]["permissions"]["push"] = False
+            self.remote["repos/CritX-ai/ReGen"]["full_name"] = "other/ReGen"
             with self.assertRaises(RuntimeError):
                 release.authorize(self.candidate, "draft", "1.0.0", "10")
 

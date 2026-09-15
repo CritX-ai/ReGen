@@ -226,8 +226,11 @@ def authorize(candidate, operation, requested_version, requested_run):
         raise RuntimeError("candidate_run must name this original retained candidate from a different completed run")
     candidate_commit(commit)
     repository = github(f"repos/{repo}")
-    if repository.get("permissions", {}).get("push") is not True:
-        raise RuntimeError("GitHub credential must have push access so existing drafts cannot be hidden")
+    # GITHUB_TOKEN is an installation token, not a user's repository role:
+    # permissions.push is absent. The same-SHA workflow grants contents:write;
+    # GitHub enforces that permission on release/tag API operations.
+    if repository.get("full_name") != repo:
+        raise RuntimeError("GitHub repository identity differs from the release workflow")
     run = github(f"repos/{repo}/actions/runs/{requested_run}")
     # Reruns preserve the run ID but can replace expired artifacts. Only a
     # separately reviewed, first-attempt run can establish a release candidate.
