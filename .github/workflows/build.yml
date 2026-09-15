@@ -228,6 +228,10 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ github.sha }}
+      - name: Install exact Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal
+      - name: Fetch the locked dependency graph for notice regression checks
+        run: cargo +1.98.1 fetch --locked
       - name: Exercise offline release authorization and partial-state boundaries
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
       - name: Download every native package

@@ -15,18 +15,24 @@ use std::path::Path;
 fn asset_copy_hashes_the_complete_length_prefixed_stream_across_buffer_boundaries() {
     // Span the fixed buffer boundary with a pattern that exposes lost or repeated chunks.
     let source: Vec<_> = (0..65539).map(|index| (index % 251) as u8).collect();
-    let mut output = Vec::new();
+    let temp = tempdir();
+    let path = temp.path().join("asset.bin");
+    let destination = temp.path().join("copied.bin");
+    fs::write(&path, &source).unwrap();
+    let mut input = fs::File::open(&path).unwrap();
+    let mut output = fs::File::create(&destination).unwrap();
     let mut digest = Sha256::new();
     copy_asset(
-        &mut Cursor::new(&source),
+        &mut input,
         &mut output,
         source.len() as u64,
         &mut digest,
         &mut [0; 65536],
-        Path::new("asset.bin"),
+        &path,
     )
     .unwrap();
-    assert_eq!(output, source);
+    drop(output);
+    assert_eq!(fs::read(destination).unwrap(), source);
     let mut expected = Sha256::new();
     expected.update((source.len() as u64).to_le_bytes());
     expected.update(&source);
@@ -42,7 +48,8 @@ fn assets_that_shrink_or_grow_after_inspection_cannot_publish_a_stale_length_has
         let mut input = fs::File::open(&path).unwrap();
         let inspected = input.metadata().unwrap().len();
         fs::write(&path, changed).unwrap();
-        let mut output = Vec::new();
+        let destination = temp.path().join("copied.bin");
+        let mut output = fs::File::create(&destination).unwrap();
         assert!(
             copy_asset(
                 &mut input,
@@ -54,7 +61,8 @@ fn assets_that_shrink_or_grow_after_inspection_cannot_publish_a_stale_length_has
             )
             .is_err()
         );
-        assert_eq!(output, changed);
+        drop(output);
+        assert_eq!(fs::read(destination).unwrap(), changed);
         assert_eq!(fs::read(&path).unwrap(), changed);
     }
 }
@@ -66,7 +74,8 @@ fn asset_read_failure_preserves_the_io_cause_without_emitting_bytes() {
     let path = temp.path().join("write-only.bin");
     fs::write(&path, b"source").unwrap();
     let mut input = fs::OpenOptions::new().write(true).open(&path).unwrap();
-    let mut output = Vec::new();
+    let destination = temp.path().join("copied.bin");
+    let mut output = fs::File::create(&destination).unwrap();
     let error = copy_asset(
         &mut input,
         &mut output,
@@ -77,7 +86,8 @@ fn asset_read_failure_preserves_the_io_cause_without_emitting_bytes() {
     )
     .unwrap_err();
     assert!(error.downcast_ref::<std::io::Error>().is_some());
-    assert!(output.is_empty());
+    drop(output);
+    assert_eq!(fs::read(destination).unwrap(), b"");
     assert_eq!(fs::read(&path).unwrap(), b"source");
 }
 
@@ -99,6 +109,77 @@ fn asset_write_failure_reports_capacity_exhaustion_instead_of_a_valid_hash() {
         std::io::ErrorKind::WriteZero
     );
     assert_eq!(&output, b"ass");
+}
+
+#[test]
+fn asset_copy_cannot_report_success_when_the_destination_handle_is_read_only() {
+    let temp = tempdir();
+    let path = temp.path().join("asset.bin");
+    let destination = temp.path().join("copied.bin");
+    fs::write(&path, b"asset").unwrap();
+    fs::write(&destination, b"existing destination").unwrap();
+    let mut input = fs::File::open(&path).unwrap();
+    let mut output = fs::File::open(&destination).unwrap();
+    let error = copy_asset(
+        &mut input,
+        &mut output,
+        5,
+        &mut Sha256::new(),
+        &mut [0; 65536],
+        &path,
+    )
+    .unwrap_err();
+    assert!(
+        error
+            .downcast_ref::<std::io::Error>()
+            .unwrap()
+            .raw_os_error()
+            .is_some()
+    );
+    assert_eq!(fs::read(destination).unwrap(), b"existing destination");
+    assert_eq!(fs::read(path).unwrap(), b"asset");
+}
+
+#[test]
+fn equivalent_css_spelling_keeps_the_asset_url_and_relative_binary_references() {
+    let root = tempdir();
+    let first_stage = tempdir();
+    let second_stage = tempdir();
+    fs::create_dir_all(root.path().join("assets/css")).unwrap();
+    fs::create_dir_all(root.path().join("assets/images")).unwrap();
+    let stylesheet = root.path().join("assets/css/site.css");
+    fs::write(
+        &stylesheet,
+        "body { color: #ff0000; background-image: url(../images/pixel.bin); }",
+    )
+    .unwrap();
+    let binary = [0, 255, 13, 10];
+    fs::write(root.path().join("assets/images/pixel.bin"), binary).unwrap();
+    let first = super::prepare(root.path(), first_stage.path()).unwrap();
+    let relative = first.base.trim_start_matches('/');
+    let optimized = fs::read(first_stage.path().join(relative).join("css/site.css")).unwrap();
+    assert_eq!(
+        fs::read(first_stage.path().join(relative).join("images/pixel.bin")).unwrap(),
+        binary
+    );
+    assert!(
+        std::str::from_utf8(&optimized)
+            .unwrap()
+            .contains("../images/pixel.bin")
+    );
+    fs::write(
+        &stylesheet,
+        "body{color:red;background-image:url(../images/pixel.bin)}",
+    )
+    .unwrap();
+    let second = super::prepare(root.path(), second_stage.path()).unwrap();
+    assert_eq!(first.base, second.base);
+    assert_eq!(first.count, 2);
+    assert_eq!(second.count, 2);
+    assert_eq!(
+        fs::read(second_stage.path().join(relative).join("css/site.css")).unwrap(),
+        optimized
+    );
 }
 
 #[test]

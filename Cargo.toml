@@ -65,7 +65,6 @@ include = [
     "/site/assets/regen-logo.svg",
     "/site/assets/regen-logo-static.svg",
     "/site/assets/regen-mark.svg",
-    "/site/assets/version.svg",
     "/site/assets/fonts/ibm-plex-mono-latin-400.woff2",
     "/site/assets/fonts/ibm-plex-sans-latin-variable.woff2",
     "/site/assets/fonts/ibm-plex-ofl.txt",

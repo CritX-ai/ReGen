@@ -244,7 +244,7 @@ def main():
         shutil.copytree(ROOT / "examples" / "minimal", package / "examples" / "minimal", ignore=shutil.ignore_patterns("dist", ".regen-stage", ".regen-previous"))
         assets = package / "site" / "assets"
         assets.mkdir(parents=True)
-        for asset in ("regen-logo.svg", "regen-logo-static.svg", "regen-mark.svg", "version.svg"):
+        for asset in ("regen-logo.svg", "regen-logo-static.svg", "regen-mark.svg"):
             shutil.copyfile(ROOT / "site" / "assets" / asset, assets / asset)
         notice_text = collect_licenses(package / "licenses", args.target)
         (package / "THIRD-PARTY-NOTICES.txt").write_text(notice_text, encoding="utf-8", newline="\n")

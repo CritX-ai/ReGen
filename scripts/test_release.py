@@ -19,8 +19,8 @@ import check_cargo
 from test_check_cargo import SourceBundle, write_tar
 
 
-class ActivationHistory:
-    """Real isolated Git objects: the release guard never receives canned diff output."""
+class CandidateHistory:
+    """Real isolated Git commits for the tested checkout and its older source."""
 
     def __init__(self, root):
         self.root = root
@@ -34,32 +34,30 @@ class ActivationHistory:
             "GIT_INDEX_FILE": str(root / "fixture-index"),
         })
         self.git("init", "--quiet", "--template=", "--object-format=sha1")
+        self.previous = self.commit({"src/main.rs": "fn main() {}\n"})
         self.source = {
             "README.md": "# Reviewed package\n",
             "src/main.rs": 'fn main() { println!("reviewed"); }\n',
-            ".github/release.yml": "name: reviewed release\non: workflow_dispatch\n",
+            ".github/workflows/release.yml": "name: reviewed release\non: workflow_dispatch\n",
             ".github/workflows/build.yml": "name: verification\non: push\n",
         }
-        self.candidate = self.commit(self.source)
-        self.activated = dict(self.source)
-        self.activated[".github/workflows/release.yml"] = self.activated.pop(".github/release.yml")
-        self.activation = self.commit(self.activated, [self.candidate])
+        self.candidate = self.commit(self.source, [self.previous])
         self.git("update-ref", "HEAD", self.candidate)
 
     def git(self, *arguments, input=None):
         return self.run(["git", *arguments], cwd=self.root, env=self.environment, input=input,
                         text=True, stdout=release.subprocess.PIPE, stderr=release.subprocess.PIPE, check=True).stdout.strip()
 
-    def commit(self, files, parents=(), modes=None):
+    def commit(self, files, parents=()):
         self.git("read-tree", "--empty")
         for name, data in sorted(files.items()):
             blob = self.git("hash-object", "-w", "--stdin", input=data)
-            self.git("update-index", "--add", "--cacheinfo", f"{(modes or {}).get(name, '100644')},{blob},{name}")
+            self.git("update-index", "--add", "--cacheinfo", f"100644,{blob},{name}")
         tree = self.git("write-tree")
         return self.git("commit-tree", tree, *[arg for parent in parents for arg in ("-p", parent)], input="Fixture revision\n")
 
     def read_only(self, command, *, cwd, text):
-        if command[0] != "git" or command[1] not in {"rev-parse", "rev-list", "diff-tree", "ls-tree"} or cwd != self.root:
+        if command != ["git", "rev-parse", "HEAD"] or cwd != self.root:
             raise AssertionError(f"unexpected process: {command}")
         return self.run(command, cwd=cwd, env=self.environment, text=text,
                         stdout=release.subprocess.PIPE, check=True).stdout
@@ -67,15 +65,14 @@ class ActivationHistory:
 
 class ReleaseSafety(unittest.TestCase):
     def setUp(self):
-        self.history = ActivationHistory(Path(self.enterContext(tempfile.TemporaryDirectory(prefix="regen-activation-test-"))))
-        self.activation = self.history.activation
+        self.history = CandidateHistory(Path(self.enterContext(tempfile.TemporaryDirectory(prefix="regen-release-history-test-"))))
         self.candidate = {"version": "1.0.0", "tag": "v1.0.0", "commit": self.history.candidate,
                           "run_id": "10", "run_attempt": "1", "crate_sha256": "b" * 64}
         self.environment = {
             "GITHUB_ACTIONS": "true", "GITHUB_SERVER_URL": "https://github.com",
-            "GITHUB_REF": "refs/heads/main", "GITHUB_SHA": self.activation,
+            "GITHUB_REF": "refs/heads/main", "GITHUB_SHA": self.candidate["commit"],
             "GITHUB_WORKFLOW_REF": "CritX-ai/ReGen/.github/workflows/release.yml@refs/heads/main",
-            "GITHUB_WORKFLOW_SHA": self.activation,
+            "GITHUB_WORKFLOW_SHA": self.candidate["commit"],
             "GH_REPO": "CritX-ai/ReGen", "GITHUB_REPOSITORY": "CritX-ai/ReGen",
             "GITHUB_EVENT_NAME": "workflow_dispatch", "GITHUB_RUN_ID": "11",
             "REGEN_RELEASE_VERSION": "1.0.0",
@@ -90,7 +87,7 @@ class ReleaseSafety(unittest.TestCase):
             "repos/CritX-ai/ReGen/actions/runs/10": {"id": 10, "run_attempt": 1, "status": "completed", "conclusion": "success",
                 "head_sha": self.candidate["commit"], "head_branch": "main", "path": ".github/workflows/build.yml",
                 "head_repository": {"full_name": "CritX-ai/ReGen"}, "event": "push"},
-            "repos/CritX-ai/ReGen/git/ref/heads/main": {"object": {"type": "commit", "sha": self.activation}},
+            "repos/CritX-ai/ReGen/git/ref/heads/main": {"object": {"type": "commit", "sha": self.candidate["commit"]}},
             "repos/CritX-ai/ReGen/environments/release": self.protection,
             "repos/CritX-ai/ReGen/environments/release/deployment-branch-policies?per_page=100": {
                 "total_count": 1, "branch_policies": [{"name": "main", "type": "branch"}]},
@@ -115,7 +112,7 @@ class ReleaseSafety(unittest.TestCase):
     def test_completed_candidate_is_accepted_but_failed_or_different_sha_is_not(self):
         run = self.remote["repos/CritX-ai/ReGen/actions/runs/10"]
         with patch.object(release, "github", side_effect=self.api):
-            self.assertEqual(release.authorize(self.candidate, "publish-crate", "1.0.0", "10"), ("CritX-ai/ReGen", self.activation))
+            self.assertEqual(release.authorize(self.candidate, "publish-crate", "1.0.0", "10"), "CritX-ai/ReGen")
             run["conclusion"] = "failure"
             with self.assertRaises(RuntimeError):
                 release.authorize(self.candidate, "publish-crate", "1.0.0", "10")
@@ -145,55 +142,30 @@ class ReleaseSafety(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 release.authorize(self.candidate, "draft", "1.0.0", "10")
 
-    def test_only_exact_activation_preserves_original_candidate_identity(self):
-        before = self.history.git("show", f"{self.candidate['commit']}:README.md")
-        with patch.object(release, "github", side_effect=self.api):
-            release.remote_operation(Path("unused"), self.candidate, "authorize", "1.0.0", "10")
-        self.assertEqual(self.history.git("rev-parse", "HEAD"), self.candidate["commit"])
-        self.assertEqual(os.environ["GITHUB_SHA"], self.activation)
-        self.assertNotEqual(self.candidate["commit"], self.activation)
-        self.assertEqual(self.history.git("show", f"{self.activation}:README.md"), before)
-        self.process.assert_not_called()
-
-    def test_source_readme_or_activation_edits_cannot_hide_behind_successful_run(self):
-        for path, replacement in (
-            ("src/main.rs", 'fn main() { println!("unreviewed"); }\n'),
-            ("README.md", "# Badge update after testing\n"),
-            (".github/workflows/release.yml", "name: unreviewed release\non: push\n"),
-            (".github/workflows/extra.yml", "name: extra workflow\non: push\n"),
-        ):
-            files = {**self.history.activated, path: replacement}
-            activation = self.history.commit(files, [self.candidate["commit"]])
-            with self.subTest(path=path), patch.dict(os.environ, {"GITHUB_SHA": activation, "GITHUB_WORKFLOW_SHA": activation}), patch.object(release, "github", side_effect=AssertionError("drift must fail before remote access")):
-                with self.assertRaises(RuntimeError):
+    def test_candidate_dispatch_workflow_and_checkout_must_share_one_commit(self):
+        previous = self.history.previous
+        with patch.object(release, "github", side_effect=AssertionError("commit drift must fail before remote access")):
+            for changed in (
+                {"GITHUB_SHA": previous},
+                {"GITHUB_WORKFLOW_SHA": previous},
+                {"GITHUB_SHA": previous, "GITHUB_WORKFLOW_SHA": previous},
+            ):
+                with self.subTest(environment=changed), patch.dict(os.environ, changed), self.assertRaises(RuntimeError):
                     release.remote_operation(Path("unused"), self.candidate, "draft", "1.0.0", "10")
+            with self.subTest(candidate=previous), self.assertRaises(RuntimeError):
+                release.remote_operation(Path("unused"), {**self.candidate, "commit": previous}, "draft", "1.0.0", "10")
+            self.history.git("update-ref", "HEAD", previous)
+            with self.subTest(checkout=previous), self.assertRaises(RuntimeError):
+                release.remote_operation(Path("unused"), self.candidate, "draft", "1.0.0", "10")
         self.process.assert_not_called()
 
-    def test_copy_wrong_destination_mode_and_non_direct_parent_are_not_activation(self):
-        copied = {**self.history.source, ".github/workflows/release.yml": self.history.source[".github/release.yml"]}
-        wrong_path = dict(self.history.source)
-        wrong_path[".github/workflows/publish.yml"] = wrong_path.pop(".github/release.yml")
-        intermediate = self.history.commit({**self.history.source, "unreviewed.txt": "extra\n"}, [self.candidate["commit"]])
-        revisions = [
-            self.history.commit(copied, [self.candidate["commit"]]),
-            self.history.commit(wrong_path, [self.candidate["commit"]]),
-            self.history.commit(self.history.activated, [self.candidate["commit"]], {".github/workflows/release.yml": "100755"}),
-            self.history.commit(self.history.activated, [intermediate]),
-            self.history.commit(self.history.activated, [self.candidate["commit"], intermediate]),
-            self.candidate["commit"],
-        ]
-        for activation in revisions:
-            with self.subTest(activation=activation), self.assertRaises(RuntimeError):
-                release.require_activation(self.candidate["commit"], activation)
-
-    def test_explicit_run_checkout_and_original_workflow_cannot_be_substituted(self):
+    def test_explicit_run_and_build_workflow_cannot_be_substituted(self):
         with patch.object(release, "github", side_effect=self.api):
             for requested in (None, "11", "010", "local"):
                 with self.subTest(requested=requested), self.assertRaises(RuntimeError):
                     release.authorize(self.candidate, "draft", "1.0.0", requested)
-            for changed in ({"run_id": "12"}, {"commit": self.activation}):
-                with self.subTest(candidate=changed), self.assertRaises(RuntimeError):
-                    release.authorize({**self.candidate, **changed}, "draft", "1.0.0", "10")
+            with self.assertRaises(RuntimeError):
+                release.authorize({**self.candidate, "run_id": "12"}, "draft", "1.0.0", "10")
             run = self.remote["repos/CritX-ai/ReGen/actions/runs/10"]
             for changed in (
                 {"id": 12}, {"status": "in_progress"}, {"head_branch": "other"},
@@ -208,7 +180,7 @@ class ReleaseSafety(unittest.TestCase):
         with patch.object(release, "github", side_effect=self.api):
             for changed in (
                 {"GITHUB_WORKFLOW_REF": "CritX-ai/ReGen/.github/workflows/build.yml@refs/heads/main"},
-                {"GITHUB_WORKFLOW_SHA": self.candidate["commit"]}, {"GITHUB_REF": "refs/tags/v1.0.0"},
+                {"GITHUB_REF": "refs/tags/v1.0.0"},
                 {"GITHUB_RUN_ID": "10"},
             ):
                 with self.subTest(environment=changed), patch.dict(os.environ, changed), self.assertRaises(RuntimeError):
@@ -218,7 +190,7 @@ class ReleaseSafety(unittest.TestCase):
                 release.authorize(self.candidate, "draft", "1.0.0", "10")
             with patch.dict(self.protection, {"deployment_branch_policy": None}), self.assertRaises(RuntimeError):
                 release.authorize(self.candidate, "draft", "1.0.0", "10")
-            self.remote["repos/CritX-ai/ReGen/git/ref/heads/main"]["object"]["sha"] = self.candidate["commit"]
+            self.remote["repos/CritX-ai/ReGen/git/ref/heads/main"]["object"]["sha"] = "c" * 40
             with self.assertRaises(RuntimeError):
                 release.authorize(self.candidate, "draft", "1.0.0", "10")
         self.process.assert_not_called()
@@ -235,7 +207,7 @@ class ReleaseSafety(unittest.TestCase):
                 "digest": "sha256:" + hashlib.sha256(notes).hexdigest(),
             }]]
             for operation in ("draft", "publish-crate", "publish-github"):
-                self.remote["repos/CritX-ai/ReGen/git/ref/heads/main"]["object"]["sha"] = self.activation
+                self.remote["repos/CritX-ai/ReGen/git/ref/heads/main"]["object"]["sha"] = self.candidate["commit"]
 
                 def registry(_):
                     self.remote["repos/CritX-ai/ReGen/git/ref/heads/main"]["object"]["sha"] = "c" * 40
@@ -286,7 +258,7 @@ class ReleaseSafety(unittest.TestCase):
             release.require_tag(ref, self.candidate)
         with patch.object(release, "github", return_value=ref):
             with self.assertRaises(RuntimeError):
-                release.require_main("CritX-ai/ReGen", self.activation)
+                release.require_main("CritX-ai/ReGen", self.candidate["commit"])
 
     def test_changed_or_incomplete_draft_assets_block_publication(self):
         with tempfile.TemporaryDirectory(prefix="regen-release-test-") as temporary:
@@ -575,6 +547,11 @@ class CandidateBytes(unittest.TestCase):
         before = self.snapshot()
         with self.assertRaises(RuntimeError):
             release.prepare(self.bundle.output, "1.0.0", self.bundle.commit, verify=True)
+        self.assertEqual(self.snapshot(), before)
+        # Retargeting the candidate and its checksums cannot authorize an older
+        # source receipt and crate, even when the requested commit now matches.
+        with self.assertRaises(RuntimeError):
+            release.prepare(self.bundle.output, "1.0.0", candidate["commit"], verify=True)
         self.assertEqual(self.snapshot(), before)
         candidate_path.write_bytes(original)
         checksum_path.write_bytes(original_checksums)

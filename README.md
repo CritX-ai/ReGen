@@ -2,7 +2,7 @@
 
 # ReGen: Reproducible Static Site Generator
 
-[![Version](site/assets/version.svg)](CHANGELOG.md) [![CI status](https://img.shields.io/github/actions/workflow/status/CritX-ai/ReGen/build.yml?branch=main&label=CI&style=flat-square)](https://github.com/CritX-ai/ReGen/actions/workflows/build.yml)
+[![GitHub release](https://img.shields.io/github/v/release/CritX-ai/ReGen?label=GitHub&style=flat-square)](https://github.com/CritX-ai/ReGen/releases/latest) [![crates.io release](https://img.shields.io/crates/v/regen-ssg?label=crates.io&style=flat-square)](https://crates.io/crates/regen-ssg) [![CI status](https://img.shields.io/github/actions/workflow/status/CritX-ai/ReGen/build.yml?branch=main&label=CI&style=flat-square)](https://github.com/CritX-ai/ReGen/actions/workflows/build.yml)
 
 ReGen is an opinionated, battle-tested static site generator written in Rust. Black magic, with the curtains open.
 

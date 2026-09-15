@@ -63,6 +63,28 @@ fn text_limit_accepts_the_boundary_and_rejects_one_more_byte() {
 }
 
 #[test]
+fn missing_and_nonregular_text_sources_are_not_treated_as_empty_documents() {
+    let temp = tempdir();
+    let missing = temp.path().join("missing.txt");
+    let error = read_text(&missing).unwrap_err();
+    assert_eq!(
+        error.downcast_ref::<std::io::Error>().unwrap().kind(),
+        std::io::ErrorKind::NotFound
+    );
+    assert!(format!("{error:#}").contains(missing.to_str().unwrap()));
+    assert!(!missing.exists());
+
+    let directory = temp.path().join("document");
+    fs::create_dir(&directory).unwrap();
+    fs::write(directory.join("keep.txt"), b"not a text document").unwrap();
+    assert!(read_text(&directory).is_err());
+    assert_eq!(
+        fs::read(directory.join("keep.txt")).unwrap(),
+        b"not a text document"
+    );
+}
+
+#[test]
 fn output_paths_cannot_escape_the_destination_or_truncate_existing_files() {
     let temp = tempdir();
     let root = temp.path().join("output");
@@ -109,6 +131,45 @@ fn failed_promotion_restores_the_previous_site() {
     assert!(!temp.path().join("dist/new.txt").exists());
     assert!(!temp.path().join(".regen-previous").exists());
     assert!(!temp.path().join(".regen-stage").exists());
+}
+
+#[test]
+fn successful_replacement_removes_stale_output_and_only_its_own_recovery_state() {
+    let temp = tempdir();
+    // Install real owned output first: no backup exists until a later replacement.
+    let first = Transaction::begin(temp.path()).unwrap();
+    super::write_output(
+        first.stage(),
+        "regen-manifest.json",
+        br#"{"generator":"ReGen","format":1}"#,
+    )
+    .unwrap();
+    super::write_output(first.stage(), "keep.txt", b"previous site").unwrap();
+    let installed = first.commit().unwrap();
+    assert_eq!(
+        fs::read(installed.join("keep.txt")).unwrap(),
+        b"previous site"
+    );
+    assert!(!temp.path().join(".regen-previous").exists());
+    assert!(!temp.path().join(".regen-stage").exists());
+    fs::write(temp.path().join("source.txt"), b"source remains").unwrap();
+    let transaction = Transaction::begin(temp.path()).unwrap();
+    super::write_output(transaction.stage(), "nested/new.txt", b"complete new site").unwrap();
+    let output = transaction.commit().unwrap();
+
+    assert_eq!(output, temp.path().join("dist"));
+    assert_eq!(
+        fs::read(output.join("nested/new.txt")).unwrap(),
+        b"complete new site"
+    );
+    assert!(!output.join("keep.txt").exists());
+    assert!(!output.join("regen-manifest.json").exists());
+    assert!(!temp.path().join(".regen-stage").exists());
+    assert!(!temp.path().join(".regen-previous").exists());
+    assert_eq!(
+        fs::read(temp.path().join("source.txt")).unwrap(),
+        b"source remains"
+    );
 }
 
 #[test]
@@ -205,12 +266,21 @@ fn commit_rechecks_output_and_backup_symlinks_before_promotion() {
 
 #[test]
 fn text_streams_stop_after_one_lookahead_byte_even_when_the_source_keeps_growing() {
-    use std::io::Read;
+    use std::io::Seek;
 
-    // One lookahead byte distinguishes the exact limit without draining a growing source.
-    let mut input = std::io::repeat(b'a').take(TEXT_LIMIT + 2);
-    assert!(read_text_stream(&mut input, Path::new("growing.txt")).is_err());
-    assert_eq!(input.limit(), 1);
+    let temp = tempdir();
+    let path = temp.path().join("growing.txt");
+    let writer = fs::File::create(&path).unwrap();
+    writer.set_len(TEXT_LIMIT).unwrap();
+    let mut input = fs::File::open(&path).unwrap();
+    assert_eq!(input.metadata().unwrap().len(), TEXT_LIMIT);
+    // Grow only after inspection, so the stream bound must catch what metadata cannot.
+    writer.set_len(TEXT_LIMIT + 2).unwrap();
+    assert!(read_text_stream(input.try_clone().unwrap(), &path).is_err());
+    // Cloned File handles share a cursor: one byte distinguishes the boundary,
+    // while draining the final byte would exceed the promised read bound.
+    assert_eq!(input.stream_position().unwrap(), TEXT_LIMIT + 1);
+    assert_eq!(writer.metadata().unwrap().len(), TEXT_LIMIT + 2);
 }
 
 #[test]
@@ -269,6 +339,71 @@ fn a_symlink_inventory_root_cannot_read_outside_the_source_tree() {
         fs::read_to_string(outside.path().join("private.txt")).unwrap(),
         "not an asset"
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn symlinked_ancestors_cannot_redirect_text_reads_or_output_creation() {
+    use std::os::unix::fs::symlink;
+
+    let temp = tempdir();
+    let outside = tempdir();
+    fs::write(outside.path().join("private.txt"), b"external source").unwrap();
+    symlink(outside.path(), temp.path().join("linked")).unwrap();
+    assert!(read_text(&temp.path().join("linked/private.txt")).is_err());
+    assert!(output_file(temp.path(), "linked/new.txt").is_err());
+    assert!(!outside.path().join("new.txt").exists());
+    assert_eq!(
+        fs::read(outside.path().join("private.txt")).unwrap(),
+        b"external source"
+    );
+    assert!(
+        fs::symlink_metadata(temp.path().join("linked"))
+            .unwrap()
+            .file_type()
+            .is_symlink()
+    );
+}
+
+#[test]
+fn inventories_reject_nonportable_descendants_instead_of_silently_omitting_them() {
+    let temp = tempdir();
+    fs::create_dir(temp.path().join("Invalid")).unwrap();
+    fs::write(temp.path().join("Invalid/source.txt"), b"required source").unwrap();
+    assert!(super::files(temp.path(), false).is_err());
+    assert_eq!(
+        fs::read(temp.path().join("Invalid/source.txt")).unwrap(),
+        b"required source"
+    );
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn inventory_names_must_be_utf8_without_lossy_aliases() {
+    use std::os::unix::ffi::OsStringExt;
+
+    let temp = tempdir();
+    let name = std::ffi::OsString::from_vec(b"invalid-\xff.txt".to_vec());
+    let path = temp.path().join(name);
+    fs::write(&path, b"required source").unwrap();
+    assert!(super::files(temp.path(), false).is_err());
+    assert_eq!(fs::read(path).unwrap(), b"required source");
+}
+
+#[cfg(unix)]
+#[test]
+fn inventories_reject_symlink_descendants_even_when_the_target_is_a_regular_file() {
+    use std::os::unix::fs::symlink;
+
+    let temp = tempdir();
+    let outside = tempdir();
+    let target = outside.path().join("private.txt");
+    fs::write(&target, b"external source").unwrap();
+    let link = temp.path().join("linked.txt");
+    symlink(&target, &link).unwrap();
+    assert!(super::files(temp.path(), false).is_err());
+    assert_eq!(fs::read(target).unwrap(), b"external source");
+    assert!(fs::symlink_metadata(link).unwrap().file_type().is_symlink());
 }
 
 #[cfg(unix)]

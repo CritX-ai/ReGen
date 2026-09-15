@@ -68,6 +68,30 @@ fn grouped_integer_extremes_render_in_numeric_order_without_loss() {
 }
 
 #[test]
+fn public_copy_preserves_nested_binary_and_empty_files_without_changing_sources() {
+    let source = tempdir();
+    let stage = tempdir();
+    fs::create_dir(source.path().join("nested")).unwrap();
+    let binary = [0, 255, b'\r', b'\n', b'<', b'&'];
+    fs::write(source.path().join("nested/raw.bin"), binary).unwrap();
+    fs::write(source.path().join("empty.txt"), b"").unwrap();
+    let inventory = crate::files::files(source.path(), false).unwrap();
+
+    copy_public(source.path(), inventory, stage.path()).unwrap();
+
+    assert_eq!(
+        fs::read(stage.path().join("nested/raw.bin")).unwrap(),
+        binary
+    );
+    assert_eq!(fs::read(stage.path().join("empty.txt")).unwrap(), b"");
+    assert_eq!(
+        fs::read(source.path().join("nested/raw.bin")).unwrap(),
+        binary
+    );
+    assert_eq!(fs::read(source.path().join("empty.txt")).unwrap(), b"");
+}
+
+#[test]
 fn public_copy_refuses_to_truncate_an_existing_destination() {
     let source = tempdir();
     let stage = tempdir();

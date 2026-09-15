@@ -1176,9 +1176,9 @@ fn kernel_io_failures_cannot_publish_partial_output() {
     // Real filesystem failures must unwind through the complete CLI, preserving
     // the installed site and source while discarding only this build's stage.
     // Injection is scoped to one child's exact path, never global syscall ordinals.
-    // The second asset statx inspects its open descriptor. The fourth assets mkdir
-    // recreates the namespace after initial creation and two parent checks.
-    // The cache source path matches its final rename into the content-hashed tree.
+    // The second asset statx inspects its open descriptor. The first assets mkdir
+    // creates the namespace; the fourth recreates it after two parent checks.
+    // Exercise both renames: assets into the cache, then cache into the hashed tree.
     for (relative, fault) in [
         (".regen-stage", "statx:error=EIO:when=1"),
         (".regen-previous", "statx:error=EIO:when=1"),
@@ -1189,6 +1189,8 @@ fn kernel_io_failures_cannot_publish_partial_output() {
         (".regen-stage/assets/mark.svg", "openat:error=ENOSPC"),
         (".regen-stage/assets/site.css", "write:error=ENOSPC"),
         (".regen-stage/index.html", "write:error=ENOSPC"),
+        (".regen-stage/assets", "mkdir:error=ENOSPC:when=1"),
+        (".regen-stage/assets", "rename:error=EIO"),
         (".regen-stage/assets", "mkdir:error=ENOSPC:when=4"),
         (".regen-stage/asset-cache", "rename:error=EIO"),
     ] {

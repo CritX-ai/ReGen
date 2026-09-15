@@ -198,12 +198,7 @@ fn main() -> Result<()> {
             &docs_root.join("assets").join(asset),
         )?;
     }
-    for asset in [
-        "regen-logo.svg",
-        "regen-logo-static.svg",
-        "regen-mark.svg",
-        "version.svg",
-    ] {
+    for asset in ["regen-logo.svg", "regen-logo-static.svg", "regen-mark.svg"] {
         copy_source(
             repository,
             &format!("site/assets/{asset}"),
@@ -234,10 +229,6 @@ fn main() -> Result<()> {
             "site/assets/regen-mark.svg",
             format!("{base_path}/brand/regen-mark.svg"),
         ),
-        (
-            "site/assets/version.svg",
-            format!("{base_path}/brand/version.svg"),
-        ),
     ]);
     let menu: Vec<_> = [MenuGroup::Learn, MenuGroup::Project]
         .into_iter()
@@ -254,7 +245,6 @@ fn main() -> Result<()> {
         &docs_root.join("content/en/site.yaml"),
         &json!({
             "menu": menu,
-            "version": env!("CARGO_PKG_VERSION"),
             "repository_url": REPOSITORY_URL,
             "poem_en_url": format!("{poem_canonical}/"),
             "poem_de_url": format!("{poem_canonical}/de/"),

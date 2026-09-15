@@ -26,7 +26,6 @@
     </a>
     <nav class="header-links" aria-label="Project">
       <a class="repository-link" href="{{ site.repository_url }}" aria-label="ReGen on GitHub" title="ReGen on GitHub"><img src="{{ asset_base }}/github-mark.svg" width="24" height="24" alt=""></a>
-      <span class="version">v{{ site.version }}</span>
     </nav>
   </header>
 
@@ -117,6 +116,10 @@
               <span class="lead-curtain-words">with the curtains open.</span>
             </span>
             <span class="lead-curtain-fact">An opinionated, battle-tested static site generator in Rust.</span>
+          </p>
+          <p class="release-badges">
+            <a href="https://github.com/CritX-ai/ReGen/releases/latest"><img src="https://img.shields.io/github/v/release/CritX-ai/ReGen?label=GitHub&amp;style=flat-square" alt="GitHub release" height="20"></a>
+            <a href="https://crates.io/crates/regen-ssg"><img src="https://img.shields.io/crates/v/regen-ssg?label=crates.io&amp;style=flat-square" alt="crates.io release" height="20"></a>
           </p>
           {% endif %}
         </header>

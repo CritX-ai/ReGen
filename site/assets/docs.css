@@ -71,7 +71,9 @@ a:hover { color: var(--cyan-bright); text-decoration-thickness: 2px; }
 .repository-link { justify-content: center; width: 44px; }
 .repository-link:hover { background: var(--raised); }
 .repository-link img { display: block; }
-.version { color: var(--muted); font-family: var(--mono); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+.release-badges { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-block: 1.5rem 0; }
+.release-badges a { display: inline-flex; align-items: center; min-height: 44px; }
+.release-badges img { display: block; height: 20px; }
 
 .reading-layout { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: clamp(2rem, 4vw, 4rem); align-items: start; margin-block: 2.75rem 4rem; }
 .sidebar { position: sticky; top: 1.5rem; max-height: calc(100dvh - 3rem); overflow-y: auto; padding: 0.25rem 1rem 0.75rem 0.25rem; border-inline-end: 1px solid var(--rule); font-size: 0.8rem; scrollbar-width: thin; }

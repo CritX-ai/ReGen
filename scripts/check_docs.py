@@ -22,6 +22,11 @@ POEM_ROUTES = {
     "guide/poem/de/index.html": ("de", {"en": "guide/poem/", "de": "guide/poem/de/"}),
 }
 POEM_HOSTS = {"index.html"}
+# Release status is deliberately live; all other documentation resources stay local.
+RELEASE_BADGES = {
+    "https://img.shields.io/github/v/release/CritX-ai/ReGen?label=GitHub&style=flat-square",
+    "https://img.shields.io/crates/v/regen-ssg?label=crates.io&style=flat-square",
+}
 VOID_ELEMENTS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
 CSS_URL = re.compile(
     r"url\(\s*(?:\"((?:\\.|[^\"\\])*)\"|'((?:\\.|[^'\\])*)'|([^)]*?))\s*\)",
@@ -223,7 +228,8 @@ class Site:
             require(not resource and resolved.scheme in {"mailto", "tel"}, f"unexpected URL scheme in {source}: {destination}")
             return
         if origin(resolved) != origin(self.base):
-            require(not resource, f"external resource dependency in {source}: {destination}")
+            require(not resource or (source == "index.html" and destination in RELEASE_BADGES),
+                    f"external resource dependency in {source}: {destination}")
             return
         require(not resolved.username and not resolved.password, f"credential-bearing URL in {source}")
         path = unquote(resolved.path, errors="strict")
@@ -418,9 +424,6 @@ class Site:
 
     def check(self, docs, version):
         self.check_manifests(version)
-        badge = ET.fromstring((self.root / "brand/version.svg").read_bytes())
-        visible_versions = [node.text for node in badge.iter("{http://www.w3.org/2000/svg}text")]
-        require(version in visible_versions, "visible source-version badge differs from the generator version")
         animated = (self.root / "brand/regen-logo.svg").read_text(encoding="utf-8")
         static = (self.root / "brand/regen-logo-static.svg").read_text(encoding="utf-8")
         require(projection(animated) == static, "static wordmark differs from the animated logo's default artwork")

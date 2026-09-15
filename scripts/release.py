@@ -205,34 +205,17 @@ def release_state(repo, tag):
     return release, refs[0] if refs else None
 
 
-def require_activation(commit, activation):
-    """Only a one-commit, byte-identical move can activate the reviewed workflow."""
-    if not re.fullmatch(r"[0-9a-f]{40}", activation) or not re.fullmatch(r"[0-9a-f]{40}", commit):
-        raise RuntimeError("candidate and activation must be full Git commit SHAs")
-    parents = subprocess.check_output(["git", "rev-list", "--parents", "-n", "1", activation], cwd=ROOT, text=True).split()
-    if parents != [activation, commit]:
-        raise RuntimeError("release activation must have exactly the tested candidate as its sole parent")
-    dormant, active = ".github/release.yml", ".github/workflows/release.yml"
-    changes = subprocess.check_output([
-        "git", "diff-tree", "--no-commit-id", "--name-status", "--no-renames", "-r", commit, activation,
-    ], cwd=ROOT, text=True).splitlines()
-    if sorted(changes) != [f"A\t{active}", f"D\t{dormant}"]:
-        raise RuntimeError("activation may only move .github/release.yml to .github/workflows/release.yml; source and README must not change")
-    original = subprocess.check_output(["git", "ls-tree", commit, "--", dormant], cwd=ROOT, text=True).split("\t")[0]
-    activated = subprocess.check_output(["git", "ls-tree", activation, "--", active], cwd=ROOT, text=True).split("\t")[0]
-    if not original.startswith("100644 blob ") or activated != original:
-        raise RuntimeError("activated release workflow must retain the original regular-file mode and identical bytes")
-
-
 def authorize(candidate, operation, requested_version, requested_run):
     current = candidate["version"]
     repo = os.environ.get("GH_REPO", "")
-    activation = os.environ.get("GITHUB_SHA", "")
+    commit = candidate["commit"]
     if (os.environ.get("GITHUB_ACTIONS") != "true" or os.environ.get("GITHUB_SERVER_URL") != "https://github.com"
             or os.environ.get("GITHUB_REF") != "refs/heads/main" or repo != os.environ.get("GITHUB_REPOSITORY")
-            or os.environ.get("GITHUB_WORKFLOW_REF") != f"{repo}/.github/workflows/release.yml@refs/heads/main"
-            or os.environ.get("GITHUB_WORKFLOW_SHA") != activation):
-        raise RuntimeError("remote actions require the activated release workflow on main")
+            or os.environ.get("GITHUB_WORKFLOW_REF") != f"{repo}/.github/workflows/release.yml@refs/heads/main"):
+        raise RuntimeError("remote actions require the release workflow on main")
+    if (not re.fullmatch(r"[0-9a-f]{40}", commit) or os.environ.get("GITHUB_SHA") != commit
+            or os.environ.get("GITHUB_WORKFLOW_SHA") != commit):
+        raise RuntimeError("candidate, dispatch and release workflow must use the same full tested commit SHA")
     if os.environ.get("REGEN_RELEASE_VERSION") != current:
         raise RuntimeError("REGEN_RELEASE_VERSION must explicitly authorize this exact package version")
     if (os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch" or requested_version != current
@@ -241,8 +224,7 @@ def authorize(candidate, operation, requested_version, requested_run):
     if (not isinstance(requested_run, str) or not re.fullmatch(r"[1-9][0-9]*", requested_run)
             or candidate["run_id"] != requested_run or requested_run == os.environ.get("GITHUB_RUN_ID")):
         raise RuntimeError("candidate_run must name this original retained candidate from a different completed run")
-    candidate_commit(candidate["commit"])
-    require_activation(candidate["commit"], activation)
+    candidate_commit(commit)
     repository = github(f"repos/{repo}")
     if repository.get("permissions", {}).get("push") is not True:
         raise RuntimeError("GitHub credential must have push access so existing drafts cannot be hidden")
@@ -265,8 +247,8 @@ def authorize(candidate, operation, requested_version, requested_run):
     policies = branches.get("branch_policies", [])
     if branches.get("total_count") != 1 or len(policies) != 1 or policies[0].get("name") != "main" or policies[0].get("type") != "branch":
         raise RuntimeError("release environment must have exactly one deployment rule: branch main")
-    require_main(repo, activation)
-    return repo, activation
+    require_main(repo, commit)
+    return repo
 
 
 def require_tag(ref, candidate):
@@ -277,7 +259,7 @@ def require_tag(ref, candidate):
 def require_main(repo, commit):
     ref = github(f"repos/{repo}/git/ref/heads/main")
     if ref.get("object", {}).get("type") != "commit" or ref["object"].get("sha") != commit:
-        raise RuntimeError("main no longer points to the reviewed activation commit; no release write is authorized")
+        raise RuntimeError("main no longer points to the tested candidate commit; no release write is authorized")
 
 
 def verify_draft(repo, release, directory):
@@ -330,9 +312,10 @@ def cargo_publish(candidate, dry_run):
 
 
 def remote_operation(directory, candidate, operation, requested_version, requested_run):
-    repo, activation = authorize(candidate, operation, requested_version, requested_run)
+    repo = authorize(candidate, operation, requested_version, requested_run)
+    commit = candidate["commit"]
     if operation == "authorize":
-        print(f"Authorized original candidate {candidate['commit']} from run {requested_run} via activation {activation}; no remote writes")
+        print(f"Authorized candidate {commit} from run {requested_run} at the same release workflow and main SHA; no remote writes")
         return
     current, tag = candidate["version"], candidate["tag"]
     release, ref = release_state(repo, tag)
@@ -340,10 +323,10 @@ def remote_operation(directory, candidate, operation, requested_version, request
     if operation == "draft":
         if release or ref or crate is not None:
             raise RuntimeError("version already has a tag, draft, release, or crate; nothing overwritten. Inspect partial/existing state before a separate action.")
-        require_main(repo, activation)
+        require_main(repo, commit)
         created = github(f"repos/{repo}/git/refs", {"ref": f"refs/tags/{tag}", "sha": candidate["commit"]})
         require_tag(created, candidate)
-        require_main(repo, activation)
+        require_main(repo, commit)
         assets = [str(path) for path in sorted(directory.iterdir())]
         subprocess.run(["gh", "release", "create", tag, *assets, "--repo", repo,
                         "--draft", "--verify-tag", "--title", f"ReGen {current}",
@@ -358,7 +341,7 @@ def remote_operation(directory, candidate, operation, requested_version, request
     if operation == "publish-crate":
         if crate is not None:
             raise RuntimeError("this immutable crate version already exists; never upload it again")
-        require_main(repo, activation)
+        require_main(repo, commit)
         cargo_publish(candidate, dry_run=False)
         crate = registry_version(current)
         if crate is None or crate["cksum"] != candidate["crate_sha256"] or crate["yanked"]:
@@ -368,7 +351,7 @@ def remote_operation(directory, candidate, operation, requested_version, request
     if crate is None or crate["cksum"] != candidate["crate_sha256"] or crate["yanked"]:
         raise RuntimeError("publish-github requires the matching, unyanked immutable crate to be visible first")
     # No edits to notes/assets: publish only the exact draft already inspected.
-    require_main(repo, activation)
+    require_main(repo, commit)
     command = ["gh", "api", "--hostname", "github.com", "--method", "PATCH",
                f"repos/{repo}/releases/{release['id']}", "--input", "-"]
     result = subprocess.run(command, input=json.dumps({"draft": False}), text=True, stdout=subprocess.PIPE, check=True)
