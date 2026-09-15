@@ -6,6 +6,7 @@
 //! account for privileged runners that can bypass Unix mode bits.
 
 use super::{TEXT_LIMIT, Transaction, output_file, read_text, read_text_stream};
+use crate::test_support::tempdir;
 use std::fs;
 use std::path::Path;
 
@@ -48,7 +49,7 @@ fn with_mode<T>(path: &Path, mode: u32, action: impl FnOnce() -> T) -> T {
 
 #[test]
 fn text_limit_accepts_the_boundary_and_rejects_one_more_byte() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = tempdir();
     let path = temp.path().join("bounded.txt");
     let file = fs::File::create(&path).unwrap();
     file.set_len(TEXT_LIMIT).unwrap();
@@ -63,7 +64,7 @@ fn text_limit_accepts_the_boundary_and_rejects_one_more_byte() {
 
 #[test]
 fn output_paths_cannot_escape_the_destination_or_truncate_existing_files() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = tempdir();
     let root = temp.path().join("output");
     fs::create_dir(&root).unwrap();
     let outside = temp.path().join("keep.txt");
@@ -78,7 +79,7 @@ fn output_paths_cannot_escape_the_destination_or_truncate_existing_files() {
 
 #[test]
 fn a_lost_stage_cannot_install_an_incomplete_first_build() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = tempdir();
     let transaction = Transaction::begin(temp.path()).unwrap();
     fs::remove_dir(transaction.stage()).unwrap();
     assert!(transaction.commit().is_err());
@@ -89,7 +90,7 @@ fn a_lost_stage_cannot_install_an_incomplete_first_build() {
 
 #[test]
 fn failed_promotion_restores_the_previous_site() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = tempdir();
     owned_output(temp.path());
     let manifest = fs::read(temp.path().join("dist/regen-manifest.json")).unwrap();
     let transaction = Transaction::begin(temp.path()).unwrap();
@@ -112,7 +113,7 @@ fn failed_promotion_restores_the_previous_site() {
 
 #[test]
 fn a_backup_appearing_before_commit_is_preserved_for_manual_recovery() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = tempdir();
     owned_output(temp.path());
     let transaction = Transaction::begin(temp.path()).unwrap();
     fs::write(transaction.stage().join("new.txt"), "new site").unwrap();
@@ -138,7 +139,7 @@ fn a_backup_appearing_before_commit_is_preserved_for_manual_recovery() {
 
 #[test]
 fn failed_backup_cleanup_keeps_the_installed_site_and_recoverable_backup() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = tempdir();
     owned_output(temp.path());
     let transaction = Transaction::begin(temp.path()).unwrap();
     fs::write(transaction.stage().join("new.txt"), "new site").unwrap();
@@ -162,7 +163,7 @@ fn failed_backup_cleanup_keeps_the_installed_site_and_recoverable_backup() {
 #[cfg(unix)]
 #[test]
 fn non_directory_ancestors_report_the_filesystem_error_without_mutation() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = tempdir();
     let file = temp.path().join("file");
     fs::write(&file, "not a directory").unwrap();
     let error = super::reject_symlinks(&file.join("child")).unwrap_err();
@@ -179,8 +180,8 @@ fn commit_rechecks_output_and_backup_symlinks_before_promotion() {
     use std::os::unix::fs::symlink;
 
     for name in ["dist", ".regen-previous"] {
-        let temp = tempfile::tempdir().unwrap();
-        let outside = tempfile::tempdir().unwrap();
+        let temp = tempdir();
+        let outside = tempdir();
         fs::write(outside.path().join("keep.txt"), "external").unwrap();
         let transaction = Transaction::begin(temp.path()).unwrap();
         fs::write(transaction.stage().join("new.txt"), "new site").unwrap();
@@ -215,7 +216,7 @@ fn text_streams_stop_after_one_lookahead_byte_even_when_the_source_keeps_growing
 #[test]
 fn text_stream_read_failures_preserve_the_io_cause_and_source() {
     // A real unreadable handle must not become an empty successful input.
-    let temp = tempfile::tempdir().unwrap();
+    let temp = tempdir();
     let path = temp.path().join("write-only.txt");
     fs::write(&path, "source remains intact").unwrap();
     let input = fs::OpenOptions::new().write(true).open(&path).unwrap();
@@ -227,7 +228,7 @@ fn text_stream_read_failures_preserve_the_io_cause_and_source() {
 #[test]
 fn failed_rollback_preserves_both_the_recovery_copy_and_intervening_output() {
     // A nonempty intervening directory blocks rollback without a scheduler race.
-    let temp = tempfile::tempdir().unwrap();
+    let temp = tempdir();
     owned_output(temp.path());
     let mut transaction = Transaction::begin(temp.path()).unwrap();
     let manifest = fs::read(transaction.output.join("regen-manifest.json")).unwrap();
@@ -258,8 +259,8 @@ fn a_symlink_inventory_root_cannot_read_outside_the_source_tree() {
     use std::os::unix::fs::symlink;
 
     // Optional means absent is allowed, not that a linked root may be traversed.
-    let temp = tempfile::tempdir().unwrap();
-    let outside = tempfile::tempdir().unwrap();
+    let temp = tempdir();
+    let outside = tempdir();
     fs::write(outside.path().join("private.txt"), "not an asset").unwrap();
     let root = temp.path().join("assets");
     symlink(outside.path(), &root).unwrap();
@@ -273,7 +274,7 @@ fn a_symlink_inventory_root_cannot_read_outside_the_source_tree() {
 #[cfg(unix)]
 #[test]
 fn denied_stage_cleanup_leaves_recoverable_files_without_touching_the_previous_site() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = tempdir();
     owned_output(temp.path());
     let transaction = Transaction::begin(temp.path()).unwrap();
     let stage = transaction.stage().to_path_buf();
@@ -301,7 +302,7 @@ fn denied_stage_cleanup_leaves_recoverable_files_without_touching_the_previous_s
 #[test]
 fn inspected_but_unreadable_text_reports_permission_denied_without_mutation() {
     // Metadata can be readable even when opening the file is forbidden.
-    let temp = tempfile::tempdir().unwrap();
+    let temp = tempdir();
     let path = temp.path().join("private.txt");
     fs::write(&path, "private source").unwrap();
     with_mode(&path, 0o000, || {
@@ -326,7 +327,7 @@ fn inspected_but_unreadable_text_reports_permission_denied_without_mutation() {
 #[cfg(unix)]
 #[test]
 fn unreadable_subdirectories_fail_the_inventory_instead_of_omitting_sources() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = tempdir();
     let nested = temp.path().join("nested");
     fs::create_dir(&nested).unwrap();
     fs::write(nested.join("source.txt"), "required source").unwrap();
@@ -357,7 +358,7 @@ fn unreadable_subdirectories_fail_the_inventory_instead_of_omitting_sources() {
 #[cfg(unix)]
 #[test]
 fn denied_output_directory_creation_does_not_create_a_partial_destination() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = tempdir();
     with_mode(temp.path(), 0o555, || {
         let denied = fs::create_dir(temp.path().join("permission-probe")).is_err();
         let result = output_file(temp.path(), "nested/output.txt");
@@ -384,7 +385,7 @@ fn denied_output_directory_creation_does_not_create_a_partial_destination() {
 #[cfg(unix)]
 #[test]
 fn denied_backup_rename_preserves_the_live_site_and_does_not_promote_the_stage() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = tempdir();
     owned_output(temp.path());
     let transaction = Transaction::begin(temp.path()).unwrap();
     fs::write(transaction.stage().join("new.txt"), "new site").unwrap();

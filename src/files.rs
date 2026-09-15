@@ -8,6 +8,8 @@
 use anyhow::{Context, Result, bail, ensure};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufReader, Read, Write};
+#[cfg(windows)]
+use std::path::Component;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
@@ -48,6 +50,14 @@ pub(crate) fn reject_symlinks(path: &Path) -> Result<Option<fs::Metadata>> {
     let mut inspected = None;
     for part in path.components() {
         prefix.push(part);
+        // A rooted Windows prefix is not a directory until RootDir is appended.
+        // Keep inspecting unrooted prefixes such as C: (the drive's current directory).
+        #[cfg(windows)]
+        if matches!(part, Component::Prefix(_))
+            && matches!(path.components().nth(1), Some(Component::RootDir))
+        {
+            continue;
+        }
         match fs::symlink_metadata(&prefix) {
             Ok(metadata) => {
                 ensure!(

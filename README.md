@@ -1,6 +1,6 @@
 [![ReGen logo](site/assets/regen-logo.svg)](site/assets/regen-logo.svg)
 
-# ReGen: Rust-based Reproducible Static Site Generator
+# ReGen: Reproducible Static Site Generator
 
 [![Version](site/assets/version.svg)](CHANGELOG.md) [![CI status](https://img.shields.io/github/actions/workflow/status/CritX-ai/ReGen/build.yml?branch=main&label=CI&style=flat-square)](https://github.com/CritX-ai/ReGen/actions/workflows/build.yml)
 

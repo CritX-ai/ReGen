@@ -6,6 +6,9 @@
 //! recovery states and I/O boundaries that complete builds cannot reliably reach.
 //! Platform-specific cases use real filesystem behavior rather than mocked success.
 
+mod common;
+
+use common::tempdir;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::fs;
@@ -16,7 +19,7 @@ use walkdir::WalkDir;
 
 /// Copy authored example inputs, excluding old output, and add translated subroutes.
 fn fixture() -> TempDir {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = tempdir();
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/minimal");
     for entry in WalkDir::new(&source).into_iter().map(Result::unwrap) {
         let relative = entry.path().strip_prefix(&source).unwrap();
@@ -81,7 +84,7 @@ fn assert_rejected_without_replacement(root: &Path, previous: &BTreeMap<PathBuf,
 #[test]
 fn cli_builds_from_default_and_explicit_sites_and_preserves_output_on_failure() {
     let site = fixture();
-    let caller = tempfile::tempdir().unwrap();
+    let caller = tempdir();
     let binary = env!("CARGO_BIN_EXE_regen");
     let built = Command::new(binary)
         .arg("build")
@@ -670,7 +673,7 @@ fn asset_file_names_cannot_alias_windows_devices_or_case_variants() {
 fn symlinks_cannot_read_or_replace_external_files() {
     use std::os::unix::fs::symlink;
     let site = fixture();
-    let external = tempfile::tempdir().unwrap();
+    let external = tempdir();
     let outside = external.path().join("keep.txt");
     fs::write(&outside, "outside site").unwrap();
     symlink(&outside, site.path().join("assets/leak.txt")).unwrap();
@@ -802,7 +805,7 @@ fn yaml_schema_and_tag_errors_do_not_replace_output_or_read_external_content() {
     assert_rejected_without_replacement(site.path(), &previous);
     fs::write(&page, &original).unwrap();
 
-    let outside = tempfile::tempdir().unwrap();
+    let outside = tempdir();
     let secret = outside.path().join("secret.yaml");
     fs::write(&secret, "secret: must not be included\n").unwrap();
     fs::write(
@@ -972,7 +975,7 @@ fn invalid_grouping_arguments_and_keys_abort_without_replacement() {
 
 #[test]
 fn nonexistent_site_roots_do_not_create_output() {
-    let parent = tempfile::tempdir().unwrap();
+    let parent = tempdir();
     let missing = parent.path().join("missing");
     assert!(regen::build(&missing).is_err());
     assert!(!missing.exists());
@@ -1012,7 +1015,7 @@ fn symlinked_roots_and_configuration_do_not_read_external_sites() {
     let site = fixture();
     regen::build(site.path()).unwrap();
     let previous = snapshot(&site.path().join("dist"));
-    let parent = tempfile::tempdir().unwrap();
+    let parent = tempdir();
     let linked = parent.path().join("linked-site");
     symlink(site.path(), &linked).unwrap();
     assert!(regen::build(&linked).is_err());
@@ -1182,7 +1185,7 @@ fn kernel_io_failures_cannot_publish_partial_output() {
         let site = fixture();
         regen::build(site.path()).unwrap();
         let before = snapshot(site.path());
-        let logs = tempfile::tempdir().unwrap();
+        let logs = tempdir();
         let trace = logs.path().join("kernel.trace");
         let result = Command::new("strace")
             .args(["-qq", "-o"])

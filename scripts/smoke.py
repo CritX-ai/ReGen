@@ -108,7 +108,7 @@ def main():
     version = subprocess.check_output([str(binary), "--version"], text=True).strip()
     print(version)
     with tempfile.TemporaryDirectory(prefix="regen-smoke-") as temporary:
-        root = Path(temporary)
+        root = Path(temporary).resolve(strict=True)
         snapshots = []
         for name in ("first", "second"):
             site = root / name

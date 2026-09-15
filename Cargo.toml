@@ -28,6 +28,8 @@ include = [
     "/src/lib.rs",
     "/src/main.rs",
     "/tests/generation.rs",
+    "/tests/common/mod.rs",
+    "/tests/windows_paths.rs",
     "/tests/unit/assets.rs",
     "/tests/unit/files.rs",
     "/tests/unit/rendering.rs",

@@ -10,6 +10,9 @@ mod assets;
 mod config;
 mod content;
 mod files;
+#[cfg(test)]
+#[path = "../tests/common/mod.rs"]
+mod test_support;
 
 use anyhow::{Context as _, Result, ensure};
 use config::Config;

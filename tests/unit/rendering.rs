@@ -5,6 +5,7 @@
 //! HTML, partial copies, or manifests that claim unreadable files were inventoried.
 
 use super::{copy_public, escape_html, file_digest, ordered_group_by, write_manifest, xml_escape};
+use crate::test_support::tempdir;
 use std::collections::BTreeMap;
 use std::fs::{self, File};
 use tera::{Context, Tera, Value};
@@ -68,8 +69,8 @@ fn grouped_integer_extremes_render_in_numeric_order_without_loss() {
 
 #[test]
 fn public_copy_refuses_to_truncate_an_existing_destination() {
-    let source = tempfile::tempdir().unwrap();
-    let stage = tempfile::tempdir().unwrap();
+    let source = tempdir();
+    let stage = tempdir();
     fs::write(source.path().join("keep.txt"), b"new source").unwrap();
     fs::write(stage.path().join("keep.txt"), b"existing output").unwrap();
     let inventory = crate::files::files(source.path(), false).unwrap();
@@ -88,7 +89,7 @@ fn public_copy_propagates_a_real_kernel_read_failure() {
     let root = std::path::PathBuf::from(format!("/proc/{}", std::process::id()));
     let source = root.join("mem");
     assert!(fs::symlink_metadata(&source).unwrap().is_file());
-    let site = tempfile::tempdir().unwrap();
+    let site = tempdir();
     let transaction = crate::files::Transaction::begin(site.path()).unwrap();
     let error = copy_public(&root, vec![source], transaction.stage()).unwrap_err();
     assert_eq!(
@@ -108,8 +109,8 @@ fn public_copy_propagates_a_real_kernel_read_failure() {
 fn unreadable_files_cannot_be_copied_or_recorded_in_a_successful_manifest() {
     use std::os::unix::fs::PermissionsExt;
 
-    let source = tempfile::tempdir().unwrap();
-    let stage = tempfile::tempdir().unwrap();
+    let source = tempdir();
+    let stage = tempdir();
     let path = source.path().join("private.txt");
     fs::write(&path, b"private content").unwrap();
     let inventory = crate::files::files(source.path(), false).unwrap();
@@ -144,7 +145,7 @@ fn unreadable_files_cannot_be_copied_or_recorded_in_a_successful_manifest() {
 
 #[test]
 fn manifest_requires_an_existing_tree_and_preserves_an_existing_marker() {
-    let stage = tempfile::tempdir().unwrap();
+    let stage = tempdir();
     let missing = stage.path().join("missing");
     assert!(write_manifest(&missing).is_err());
     assert!(!missing.exists());
@@ -158,7 +159,7 @@ fn manifest_requires_an_existing_tree_and_preserves_an_existing_marker() {
 
 #[test]
 fn digest_read_errors_cannot_produce_a_valid_empty_file_digest() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = tempdir();
     let file = File::create(directory.path().join("write-only")).unwrap();
     let error = file_digest(file, &mut [0; 64])
         .err()

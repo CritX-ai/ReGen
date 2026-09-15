@@ -119,7 +119,11 @@ fn main() -> Result<()> {
         .strip_suffix('/')
         .unwrap_or(&arguments.base_url);
     let poem_url = format!("{base_url}/guide/poem");
-    let temporary = tempfile::Builder::new().prefix("regen-docs-").tempdir()?;
+    // Resolve the OS temporary parent, not authored inputs: macOS aliases /var
+    // to /private/var, while ReGen deliberately rejects symlinked input paths.
+    let temporary = tempfile::Builder::new()
+        .prefix("regen-docs-")
+        .tempdir_in(fs::canonicalize(std::env::temp_dir())?)?;
     let poem_root = temporary.path().join("poem-input");
     let docs_root = temporary.path().join("docs-input");
     for relative in POEM_INPUTS {

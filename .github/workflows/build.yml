@@ -161,6 +161,7 @@ jobs:
       - name: Measure Rust production lines and regions
         run: |
           cargo +1.98.1 fetch --locked
+          mkdir -p target/coverage
           cargo +1.98.1 llvm-cov --release --frozen --all-targets --json --output-path target/coverage/rust.json --ignore-filename-regex '/tests/|/examples/' -- --include-ignored
       - name: Annotate uncovered Rust source
         run: cargo +1.98.1 llvm-cov report --release --html --output-dir target/coverage/rust-html --ignore-filename-regex '/tests/|/examples/'
