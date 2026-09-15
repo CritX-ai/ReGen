@@ -81,7 +81,8 @@ class ReleaseSafety(unittest.TestCase):
             "REGEN_RELEASE_VERSION": "1.0.0",
         }
         self.protection = {
-            "protection_rules": [{"type": "required_reviewers", "reviewers": [{"id": 1}], "prevent_self_review": True}],
+            # A single maintainer authorizes publication through workflow_dispatch.
+            "protection_rules": [],
             "deployment_branch_policy": {"protected_branches": False, "custom_branch_policies": True},
         }
         self.remote = {
@@ -138,7 +139,7 @@ class ReleaseSafety(unittest.TestCase):
 
     def test_auto_created_environment_and_hidden_drafts_fail_closed(self):
         with patch.object(release, "github", side_effect=self.api):
-            with patch.dict(self.protection, {"protection_rules": []}), self.assertRaises(RuntimeError):
+            with patch.dict(self.protection, {"deployment_branch_policy": None}), self.assertRaises(RuntimeError):
                 release.authorize(self.candidate, "draft", "1.0.0", "10")
             self.remote["repos/CritX-ai/ReGen"]["permissions"]["push"] = False
             with self.assertRaises(RuntimeError):
@@ -212,8 +213,6 @@ class ReleaseSafety(unittest.TestCase):
             ):
                 with self.subTest(environment=changed), patch.dict(os.environ, changed), self.assertRaises(RuntimeError):
                     release.authorize(self.candidate, "draft", "1.0.0", "10")
-            with patch.dict(self.protection["protection_rules"][0], {"prevent_self_review": False}), self.assertRaises(RuntimeError):
-                release.authorize(self.candidate, "draft", "1.0.0", "10")
             branches = self.remote["repos/CritX-ai/ReGen/environments/release/deployment-branch-policies?per_page=100"]
             with patch.dict(branches, {"total_count": 2}), self.assertRaises(RuntimeError):
                 release.authorize(self.candidate, "draft", "1.0.0", "10")

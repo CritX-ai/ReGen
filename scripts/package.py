@@ -102,9 +102,10 @@ def supplemental_notices(package, entry):
 
 
 def collect_licenses(destination, target):
+    # Cargo emits UTF-8 regardless of the host's legacy Windows code page.
     metadata = json.loads(subprocess.check_output([
         "cargo", f"+{TOOLCHAIN}", "metadata", "--frozen", "--format-version", "1", "--filter-platform", target,
-    ], cwd=ROOT, text=True))
+    ], cwd=ROOT, encoding="utf-8"))
     packages = []
     workspace = set(metadata["workspace_members"])
     identities = set()
@@ -140,7 +141,7 @@ def collect_licenses(destination, target):
         })
     if not packages:
         raise RuntimeError("locked dependency inventory is empty")
-    sysroot = Path(subprocess.check_output(["rustc", f"+{TOOLCHAIN}", "--print", "sysroot"], text=True).strip())
+    sysroot = Path(subprocess.check_output(["rustc", f"+{TOOLCHAIN}", "--print", "sysroot"], encoding="utf-8").strip())
     rust_docs = sysroot / "share" / "doc" / "rust"
     runtime_copyright = rust_docs / "COPYRIGHT-library.html"
     runtime_files = [runtime_copyright, *sorted((rust_docs / "licenses").glob("*.txt"))]

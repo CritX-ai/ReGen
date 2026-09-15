@@ -982,12 +982,12 @@ fn nonexistent_site_roots_do_not_create_output() {
     assert_eq!(snapshot(parent.path()), BTreeMap::new());
 }
 
-#[cfg(unix)]
+// Linux permits raw filename bytes; macOS rejects this fixture before ReGen runs.
+#[cfg(target_os = "linux")]
 #[test]
-fn non_utf8_names_and_special_files_are_rejected_without_replacement() {
+fn non_utf8_names_are_rejected_without_replacement() {
     use std::ffi::OsStr;
     use std::os::unix::ffi::OsStrExt;
-    use std::os::unix::net::UnixListener;
 
     let site = fixture();
     regen::build(site.path()).unwrap();
@@ -999,6 +999,16 @@ fn non_utf8_names_and_special_files_are_rejected_without_replacement() {
     fs::write(&invalid, "not portable").unwrap();
     assert_rejected_without_replacement(site.path(), &previous);
     fs::remove_file(invalid).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn special_files_are_rejected_without_replacement() {
+    use std::os::unix::net::UnixListener;
+
+    let site = fixture();
+    regen::build(site.path()).unwrap();
+    let previous = snapshot(&site.path().join("dist"));
 
     let socket = site.path().join("public/socket");
     let listener = UnixListener::bind(&socket).unwrap();

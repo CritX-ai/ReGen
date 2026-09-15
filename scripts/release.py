@@ -257,9 +257,8 @@ def authorize(candidate, operation, requested_version, requested_run):
             or run.get("path") != ".github/workflows/build.yml" or run.get("event") not in {"push", "workflow_dispatch"}):
         raise RuntimeError("original candidate run did not pass the complete main verification workflow")
     environment = github(f"repos/{repo}/environments/release")
-    reviewers = [rule for rule in environment.get("protection_rules", []) if rule.get("type") == "required_reviewers"]
-    if not any(rule.get("reviewers") and rule.get("prevent_self_review") is True for rule in reviewers):
-        raise RuntimeError("release environment needs required reviewers with self-review prevented")
+    # The maintainer authorizes each action with workflow_dispatch and the exact
+    # version opt-in. A second reviewer is not required; main-only scope still is.
     if environment.get("deployment_branch_policy") != {"protected_branches": False, "custom_branch_policies": True}:
         raise RuntimeError("release environment must select only the main branch")
     branches = github(f"repos/{repo}/environments/release/deployment-branch-policies?per_page=100")

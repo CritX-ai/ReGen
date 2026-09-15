@@ -7,6 +7,7 @@ description = "Opinionated, reproducible multilingual static site generation wit
 license = "WTFPL"
 readme = "README.md"
 repository = "https://github.com/CritX-ai/ReGen"
+homepage = "https://regen.critx.ai/"
 documentation = "https://regen.critx.ai/"
 keywords = ["static-site", "multilingual", "tera", "reproducible"]
 categories = ["command-line-utilities", "web-programming"]
