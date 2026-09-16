@@ -65,8 +65,11 @@
       ],
       "unavailable_source": {
         "missing": "Full upstream license text and copyright notice applicable to these crates",
-        "reason": "The complete recursive tree at the published commit contains no license, copying, copyright, notice, or authors file. The published crate source contains only inherited MIT manifest metadata. Root and crate READMEs identify sonic-rs as the source of borrowed implementations but provide neither a pinned sonic-rs revision nor license terms. The retained declaration and source-attribution excerpts are not full license text and do not establish verified license clearance.",
+        "reason": "The published crate and pinned upstream tree declare MIT but contain no complete license/copyright notice. The escape-simd source header identifies the borrowed JSON kernel as sonic-rs v0.5.5, commit 41ae6e8a5962da26eab34432d1412f35ea6d199e, which declares Apache-2.0. The retained excerpts and standard MIT terms do not include that Apache license or establish complete notice compliance. These unresolved gaps are disclosed and accepted as non-blocking for ReGen 1.0.0.",
         "inspected_source_urls": [
+          "https://raw.githubusercontent.com/napi-rs/escape-simd/4f54347555d2f520ac38b406cf69ff66d9570a57/crates/escape-simd/src/lib.rs",
+          "https://raw.githubusercontent.com/cloudwego/sonic-rs/41ae6e8a5962da26eab34432d1412f35ea6d199e/Cargo.toml",
+          "https://raw.githubusercontent.com/cloudwego/sonic-rs/41ae6e8a5962da26eab34432d1412f35ea6d199e/LICENSE",
           "https://api.github.com/repos/napi-rs/escape-simd/git/trees/4f54347555d2f520ac38b406cf69ff66d9570a57?recursive=1",
           "https://raw.githubusercontent.com/napi-rs/escape-simd/4f54347555d2f520ac38b406cf69ff66d9570a57/Cargo.toml",
           "https://raw.githubusercontent.com/napi-rs/escape-simd/4f54347555d2f520ac38b406cf69ff66d9570a57/crates/escape-simd/Cargo.toml",
@@ -113,8 +116,11 @@
       ],
       "unavailable_source": {
         "missing": "Full upstream license text and copyright notice applicable to these crates",
-        "reason": "The complete recursive tree at the published commit contains no license, copying, copyright, notice, or authors file. The published crate source contains only inherited MIT manifest metadata. Root and crate READMEs identify sonic-rs as the source of borrowed implementations but provide neither a pinned sonic-rs revision nor license terms. The retained declaration and source-attribution excerpts are not full license text and do not establish verified license clearance.",
+        "reason": "The published crate and pinned upstream tree declare MIT but contain no complete license/copyright notice. The escape-simd source header identifies the borrowed JSON kernel as sonic-rs v0.5.5, commit 41ae6e8a5962da26eab34432d1412f35ea6d199e, which declares Apache-2.0. The retained excerpts and standard MIT terms do not include that Apache license or establish complete notice compliance. These unresolved gaps are disclosed and accepted as non-blocking for ReGen 1.0.0.",
         "inspected_source_urls": [
+          "https://raw.githubusercontent.com/napi-rs/escape-simd/4f54347555d2f520ac38b406cf69ff66d9570a57/crates/escape-simd/src/lib.rs",
+          "https://raw.githubusercontent.com/cloudwego/sonic-rs/41ae6e8a5962da26eab34432d1412f35ea6d199e/Cargo.toml",
+          "https://raw.githubusercontent.com/cloudwego/sonic-rs/41ae6e8a5962da26eab34432d1412f35ea6d199e/LICENSE",
           "https://api.github.com/repos/napi-rs/escape-simd/git/trees/4f54347555d2f520ac38b406cf69ff66d9570a57?recursive=1",
           "https://raw.githubusercontent.com/napi-rs/escape-simd/4f54347555d2f520ac38b406cf69ff66d9570a57/Cargo.toml",
           "https://raw.githubusercontent.com/napi-rs/escape-simd/4f54347555d2f520ac38b406cf69ff66d9570a57/crates/json-escape-simd/Cargo.toml",
@@ -617,7 +623,7 @@
       ],
       "unavailable_source": {
         "missing": "Full upstream MIT license text and copyright notice applicable to parcel_sourcemap",
-        "reason": "The complete recursive upstream tree at the published commit contains no license, copying, copyright, notice, or authors file. The published crate source and upstream README provide no full license grant or copyright notice. Retained upstream manifest license and author-line excerpts are only a licensing declaration and source attribution, not full license text or verified license clearance.",
+        "reason": "The complete recursive upstream tree at the published commit contains no license, copying, copyright, notice, or authors file. The published crate source and upstream README provide no full license grant or copyright notice. Retained upstream manifest license and author-line excerpts are only a licensing declaration and source attribution, not full license text or verified license clearance. This unresolved gap is disclosed and accepted as non-blocking for ReGen 1.0.0.",
         "inspected_source_urls": [
           "https://api.github.com/repos/parcel-bundler/source-map/git/trees/a136bd6ba9f1d3cded501ae824341be0a54c5ce3?recursive=1",
           "https://raw.githubusercontent.com/parcel-bundler/source-map/a136bd6ba9f1d3cded501ae824341be0a54c5ce3/parcel_sourcemap/Cargo.toml",
@@ -690,8 +696,10 @@
       ],
       "unavailable_source": {
         "missing": "Full upstream MIT license text and copyright notice applicable to seahash",
-        "reason": "The complete upstream recursive tree at the published commit contains no license, copying, copyright, notice, or authors file. Published crate source, upstream README, and src/lib.rs contain no full license grant or copyright notice. Retained upstream manifest license and author-line excerpts are only a licensing declaration and source attribution, not full license text or verified license clearance.",
+        "reason": "The published crate and pinned upstream tree declare MIT but contain no complete license/copyright notice. Direct successor commit 3088c5c912b70b586d27bf553fbe964e025a2c89, titled 'fix: add missing MIT license text', adds the MIT terms but no copyright line. The retained declaration, author attribution and separately labeled standard MIT terms are not verified license clearance. This unresolved gap is disclosed and accepted as non-blocking for ReGen 1.0.0.",
         "inspected_source_urls": [
+          "https://gitlab.redox-os.org/api/v4/projects/redox-os%2Fseahash/repository/commits/3088c5c912b70b586d27bf553fbe964e025a2c89",
+          "https://gitlab.redox-os.org/redox-os/seahash/-/raw/3088c5c912b70b586d27bf553fbe964e025a2c89/LICENSE",
           "https://gitlab.redox-os.org/api/v4/projects/redox-os%2Fseahash/repository/tree?ref=94b632aeac099031c373599313d5b5f0acbbaec0&recursive=true&per_page=100",
           "https://gitlab.redox-os.org/redox-os/seahash/-/raw/94b632aeac099031c373599313d5b5f0acbbaec0/Cargo.toml",
           "https://gitlab.redox-os.org/redox-os/seahash/-/raw/94b632aeac099031c373599313d5b5f0acbbaec0/README.md",

@@ -117,8 +117,9 @@ def prepare(directory, current, commit, verify=False):
         ]
         gaps = sorted({f"{package['name']} {package['version']}" for inventory in inventories for package in inventory["packages"] if package.get("notice_source_gap")})
         if gaps:
-            notes.extend(["Upstream notice-source gaps require maintainer review before publication.",
+            notes.extend(["Known upstream notice-source gaps are disclosed and non-blocking for this release.",
                           "Archives retain exact licensing declarations and separately labeled standard terms, not fabricated copyright notices.",
+                          "The maintainer's best-effort release decision is recorded in docs/releasing.md; it does not certify legal compliance.",
                           *[f"- {identity}" for identity in gaps], ""])
         (directory / "release-notes.txt").write_text("\n".join(notes), encoding="utf-8", newline="\n")
         (directory / "SHA256SUMS").write_text(checksums(directory, names + sorted(generated - {"SHA256SUMS"})), encoding="utf-8", newline="\n")

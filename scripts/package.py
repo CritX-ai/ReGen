@@ -172,14 +172,14 @@ def collect_licenses(destination, target):
         "The inventory is conservative, not a list of code proven linked into the executable.",
         "Some upstream distributions declare MIT but omit a full license/copyright file.",
         "Those exact declarations and separate standard MIT terms are retained and explicitly flagged.",
-        "This inventory does not establish license clearance; review flagged source gaps before publication.",
+        "This best-effort inventory does not establish license clearance; unresolved source gaps remain disclosed.",
         "System libraries supplied by the operating system are not bundled.", "",
     ]
     for package in packages:
         lines.extend([f"{package['name']} {package['version']}: {package['license'] or 'see license files'}", package["source"]])
         lines.extend(f"  licenses/{path}" for path in package["notices"])
         if package["notice_source_gap"]:
-            lines.extend(["  UPSTREAM NOTICE SOURCE GAP — maintainer review required", "  " + package["notice_source_gap"]["reason"]])
+            lines.extend(["  UPSTREAM NOTICE SOURCE GAP — disclosed; see docs/releasing.md for the release decision", "  " + package["notice_source_gap"]["reason"]])
         lines.append("")
     lines.extend([f"Rust {TOOLCHAIN}", inventory["rust"]["source"]])
     lines.extend(f"  licenses/{path}" for path in inventory["rust"]["notices"])
