@@ -39,6 +39,7 @@ class SourceBundle:
             "LICENSE": b"Fixture license\n", "README.md": b"Fixture readme\n",
             "src/main.rs": b"fn main() {}\n", "src/lib.rs": b"pub fn fixture() {}\n",
             "examples/minimal/regen.toml": b'title = "Fixture"\n',
+            "examples/minimal/content/Über uns.md": b"# Fixture page\n",
         }
         included = ["/Cargo.toml", *[f"/{name}" for name in self.sources]]
         self.sources["Cargo.toml"] = (

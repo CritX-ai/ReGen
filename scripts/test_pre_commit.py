@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Defend staged-input isolation, user-hook preservation and the shared coverage gate."""
+"""Defend staged inputs, container failure blocking, user hooks and coverage."""
 
 import copy
 import os
@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import check_rust_coverage
 import pre_commit
+import container
 
 
 class StagedInputs(unittest.TestCase):
@@ -83,6 +84,35 @@ class StagedInputs(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             pre_commit.install(self.root)
         self.assertFalse(hook.exists())
+
+
+@unittest.skipUnless(sys.platform == "linux" and os.getuid() != 0
+                     and container.HOSTS.get(container.platform.machine()) in container.TARGETS,
+                     "container gate requires an unprivileged supported Linux host")
+class ContainerGate(unittest.TestCase):
+    def test_unavailable_runtime_prevents_native_gate_success(self):
+        with tempfile.TemporaryDirectory(prefix="regen-hook-container-test-") as temporary:
+            work = Path(temporary)
+            runtime = work / "podman"
+            runtime.write_text("#!/bin/sh\nexit 37\n")
+            runtime.chmod(0o755)
+            target = container.TARGETS[container.HOSTS[container.platform.machine()]]
+            execute = subprocess.run
+
+            def native_checks(command, **options):
+                # Omit expensive native checks; execute the real container command
+                # against an installed runtime whose service is unavailable.
+                if len(command) > 1 and command[1] == "scripts/container.py":
+                    return execute(command, **options)
+                return subprocess.CompletedProcess(command, 0)
+
+            with patch.dict(os.environ, {"REGEN_CONTAINER_RUNTIME": "podman",
+                                         "PATH": str(work) + os.pathsep + os.environ["PATH"]}), \
+                    patch.object(pre_commit.subprocess, "check_output", return_value=f"host: {target}\n"), \
+                    patch.object(pre_commit.subprocess, "run", side_effect=native_checks):
+                with self.assertRaises(subprocess.CalledProcessError) as failure:
+                    pre_commit.verify(container.ROOT, work, work / "cache")
+            self.assertNotEqual(failure.exception.returncode, 0)
 
 
 class SourceCoverage(unittest.TestCase):

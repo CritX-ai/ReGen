@@ -1,6 +1,8 @@
 /target/
 /release-artifacts/
+/.maintainer/
 **/dist/
+**/review/
 **/.regen-stage/
 **/.regen-previous/
 **/__pycache__/

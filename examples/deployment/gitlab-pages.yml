@@ -1,0 +1,21 @@
+# Copy to .gitlab-ci.yml beside regen.toml in your site's repository.
+# Requires GitLab 17.10+ with Pages enabled and a Linux amd64/arm64 runner
+# using the Docker or Kubernetes executor. Shell executors ignore image:
+# and need Rust 1.98.1 plus a native linker installed separately.
+# Set site.base_url to the actual Deploy > Pages URL or your custom domain.
+# TOML does not expand $CI_PAGES_URL. Unique domains usually have no prefix;
+# namespace URLs may include project and subgroup paths.
+# Network access is needed to pull the Rust image, install ReGen and publish.
+deploy-pages:
+  image: rust:1.98.1-bookworm
+  stage: deploy
+  script:
+    - cargo +1.98.1 install regen-ssg --version 1.1.0 --locked
+    - regen build --site . --profile release
+  pages:
+    publish: dist
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+# GitLab 17.10+ automatically includes pages.publish in job artifacts.
+# Keep ReGen's public/ input in place; do not rename dist/ to public/.
+# Pages requires a nonempty dist/index.html.

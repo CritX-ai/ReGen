@@ -10,3 +10,12 @@ name = "English"
 [[languages]]
 code = "de"
 name = "Deutsch"
+
+# Opt-in hook example; plain `regen build` still selects release without hooks.
+# Run `regen build --profile logged` with Python 3 available.
+[profiles.logged]
+extends = "dev"
+
+[profiles.logged.hooks]
+pre = [{ command = ["python3", "hooks/report.py"] }]
+post = [{ command = ["python3", "hooks/report.py"], when = "always", error_details = true }]

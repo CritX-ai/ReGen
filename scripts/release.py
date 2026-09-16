@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import subprocess
 import tarfile
 import tempfile
@@ -14,11 +15,12 @@ import urllib.error
 import urllib.request
 import zipfile
 
-from check_cargo import verify_source_bundle
-from package import ROOT, TARGETS, TOOLCHAIN, json_file, version
+from check_cargo import public_path, verify_source_bundle
+from package import ROOT, TARGETS, TOOLCHAIN, archive_tree, json_file, version
 
 
 def expected_files(current):
+    """Native target assets only; shared candidate assets are added by prepare."""
     names = []
     for target in TARGETS:
         base = f"regen-{current}-{target}"
@@ -26,12 +28,21 @@ def expected_files(current):
     return sorted(names)
 
 
+def example_files(current):
+    return [f"regen-example-{current}.tar.gz", f"regen-example-{current}.zip"]
+
+
 def archive_files(path):
     if path.suffix == ".zip":
         with zipfile.ZipFile(path) as archive:
-            if len(archive.namelist()) != len(set(archive.namelist())):
-                raise RuntimeError(f"duplicate archive entries: {path.name}")
-            return {name: archive.read(name) for name in archive.namelist() if not name.endswith("/")}
+            files = {}
+            for member in archive.infolist():
+                if member.is_dir() or stat.S_IFMT(member.external_attr >> 16) not in {0, stat.S_IFREG}:
+                    raise RuntimeError(f"unexpected non-file archive entry: {path.name}")
+                if member.filename in files:
+                    raise RuntimeError(f"duplicate archive entries: {path.name}")
+                files[member.filename] = archive.read(member)
+            return files
     with tarfile.open(path, "r:gz") as archive:
         files = {}
         for member in archive:
@@ -41,6 +52,39 @@ def archive_files(path):
                 raise RuntimeError(f"duplicate archive entries: {path.name}")
             files[member.name] = archive.extractfile(member).read()
         return files
+
+
+def package_examples(directory, current, sources, verify=False):
+    """Package an inspected source inventory; candidates supply verified crate bytes."""
+    prefix = "examples/minimal/"
+    payload = {name[len(prefix):]: data for name, data in sources.items() if name.startswith(prefix)}
+    if "regen.toml" not in payload or "LICENSE" in payload:
+        raise RuntimeError("example source must contain regen.toml and leave LICENSE to the project")
+    payload["LICENSE"] = sources["LICENSE"]
+    for name in payload:
+        public_path(name)
+    root_name = f"regen-example-{current}"
+    paths = [directory / name for name in example_files(current)]
+    if verify:
+        expected = {f"{root_name}/{name}": data for name, data in payload.items()}
+        for path in paths:
+            if archive_files(path) != expected:
+                raise RuntimeError(f"example archive differs from reviewed source: {path.name}")
+        return
+    if any(path.exists() or path.is_symlink() for path in paths):
+        raise RuntimeError("refusing to overwrite existing example archives; use an empty output directory")
+    with tempfile.TemporaryDirectory(prefix="regen-example-") as temporary:
+        staging = Path(temporary)
+        root = staging / root_name
+        for name, data in payload.items():
+            destination = root / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(data)
+        for path in paths:
+            archive = staging / path.name
+            archive_tree(root, archive)
+            with path.open("xb") as output:
+                output.write(archive.read_bytes())
 
 
 def validate_packages(directory, current):
@@ -85,14 +129,21 @@ def candidate_commit(requested):
 
 
 def prepare(directory, current, commit, verify=False):
-    names = expected_files(current) + [f"regen-ssg-{current}.crate", "SOURCE.json"]
+    inputs = expected_files(current) + [f"regen-ssg-{current}.crate", "SOURCE.json"]
+    names = inputs + example_files(current)
     generated = {"DEPENDENCIES.json", "CANDIDATE.json", "SHA256SUMS", "release-notes.txt"}
     present = {path.name for path in directory.iterdir() if path.is_file()}
-    required = set(names) | (generated if verify else set())
+    required = set(names) | generated if verify else set(inputs)
     if present != required or any(not path.is_file() or path.is_symlink() for path in directory.iterdir()):
         raise RuntimeError(f"release asset set differs: missing={sorted(required - present)}, extra={sorted(present - required)}")
     inventories = validate_packages(directory, current)
     source = verify_source_bundle(directory, commit)
+    with tarfile.open(directory / f"regen-ssg-{current}.crate", "r:gz") as archive:
+        example_sources = {
+            name: archive.extractfile(f"regen-ssg-{current}/{name}").read()
+            for name in source["sources"] if name == "LICENSE" or name.startswith("examples/minimal/")
+        }
+    package_examples(directory, current, example_sources, verify=verify)
     dependencies = {"format": 1, "package": "regen-ssg", "version": current, "targets": inventories}
     if not verify:
         candidate = {
@@ -109,21 +160,23 @@ def prepare(directory, current, commit, verify=False):
             f"Candidate workflow run: {candidate['run_id']} (attempt {candidate['run_attempt']})", "",
             "Each binary archive contains the executable, example, documentation, Cargo.lock, and original third-party license notices.",
             "Separate license archives and dependency inventories are provided for every target.",
+            f"Optional regen-example-{current}.zip and regen-example-{current}.tar.gz downloads contain the minimal site and project LICENSE, without a binary.",
             "The source crate and SOURCE.json retain the inspected Cargo source inventory.",
             "Verify downloads with SHA256SUMS; hashes detect changed bytes but are not signatures.",
-            "Binaries are not code-signed or notarized. Review platform loader requirements in docs/releasing.md.",
+            "Binaries are not code-signed or notarized; platform loader and security requirements still apply.",
             "A successful runner matrix does not establish bit-identical binaries across compilers or operating systems.", "",
             "Targets:", *[f"- {target}" for target in TARGETS], "",
         ]
         gaps = sorted({f"{package['name']} {package['version']}" for inventory in inventories for package in inventory["packages"] if package.get("notice_source_gap")})
         if gaps:
-            notes.extend(["Known upstream notice-source gaps are disclosed and non-blocking for this release.",
+            notes.extend(["Known upstream notice-source gaps:",
+                          "Some dependency distributions omit original license or copyright files.",
                           "Archives retain exact licensing declarations and separately labeled standard terms, not fabricated copyright notices.",
-                          "The maintainer's best-effort release decision is recorded in docs/releasing.md; it does not certify legal compliance.",
+                          "These materials do not establish license clearance or certify legal compliance.",
                           *[f"- {identity}" for identity in gaps], ""])
         (directory / "release-notes.txt").write_text("\n".join(notes), encoding="utf-8", newline="\n")
         (directory / "SHA256SUMS").write_text(checksums(directory, names + sorted(generated - {"SHA256SUMS"})), encoding="utf-8", newline="\n")
-        print(f"Prepared {current} at {commit}: six native targets, inspected crate, inventories and SHA256SUMS; no remote writes")
+        print(f"Prepared {current} at {commit}: six native targets, optional examples, inspected crate, inventories and SHA256SUMS; no remote writes")
         if os.environ.get("GITHUB_OUTPUT"):
             with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
                 output.write(f"version={current}\n")
@@ -206,8 +259,7 @@ def release_state(repo, tag):
     return release, refs[0] if refs else None
 
 
-def authorize(candidate, operation, requested_version, requested_run):
-    current = candidate["version"]
+def authorize(candidate, operation, requested_run):
     repo = os.environ.get("GH_REPO", "")
     commit = candidate["commit"]
     if (os.environ.get("GITHUB_ACTIONS") != "true" or os.environ.get("GITHUB_SERVER_URL") != "https://github.com"
@@ -217,19 +269,17 @@ def authorize(candidate, operation, requested_version, requested_run):
     if (not re.fullmatch(r"[0-9a-f]{40}", commit) or os.environ.get("GITHUB_SHA") != commit
             or os.environ.get("GITHUB_WORKFLOW_SHA") != commit):
         raise RuntimeError("candidate, dispatch and release workflow must use the same full tested commit SHA")
-    if os.environ.get("REGEN_RELEASE_VERSION") != current:
-        raise RuntimeError("REGEN_RELEASE_VERSION must explicitly authorize this exact package version")
-    if (os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch" or requested_version != current
-            or operation not in {"authorize", "draft", "publish-crate", "publish-github"}):
-        raise RuntimeError("remote actions require a separate manual operation and the exact release_version input")
+    if (os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch"
+            or operation not in {"authorize", "draft", "publish-crate", "publish-github", "publish-container"}):
+        raise RuntimeError("remote actions require a separate manual release operation")
     if (not isinstance(requested_run, str) or not re.fullmatch(r"[1-9][0-9]*", requested_run)
             or candidate["run_id"] != requested_run or requested_run == os.environ.get("GITHUB_RUN_ID")):
         raise RuntimeError("candidate_run must name this original retained candidate from a different completed run")
     candidate_commit(commit)
     repository = github(f"repos/{repo}")
     # GITHUB_TOKEN is an installation token, not a user's repository role:
-    # permissions.push is absent. The same-SHA workflow grants contents:write;
-    # GitHub enforces that permission on release/tag API operations.
+    # permissions.push is absent. The same-SHA workflow scopes permissions to
+    # the selected operation; GitHub enforces those permissions on writes.
     if repository.get("full_name") != repo:
         raise RuntimeError("GitHub repository identity differs from the release workflow")
     run = github(f"repos/{repo}/actions/runs/{requested_run}")
@@ -243,8 +293,8 @@ def authorize(candidate, operation, requested_version, requested_run):
             or run.get("path") != ".github/workflows/build.yml" or run.get("event") not in {"push", "workflow_dispatch"}):
         raise RuntimeError("original candidate run did not pass the complete main verification workflow")
     environment = github(f"repos/{repo}/environments/release")
-    # The maintainer authorizes each action with workflow_dispatch and the exact
-    # version opt-in. A second reviewer is not required; main-only scope still is.
+    # The maintainer authorizes each action for the verified Cargo-derived
+    # candidate with workflow_dispatch. Main-only environment scope is required.
     if environment.get("deployment_branch_policy") != {"protected_branches": False, "custom_branch_policies": True}:
         raise RuntimeError("release environment must select only the main branch")
     branches = github(f"repos/{repo}/environments/release/deployment-branch-policies?per_page=100")
@@ -269,18 +319,22 @@ def require_main(repo, commit):
 def verify_draft(repo, release, directory):
     if not release or release["draft"] is not True or release.get("prerelease") is not False:
         raise RuntimeError("an existing unpublished full-release draft is required; published releases are never replaced")
+    verify_release_assets(repo, release, directory)
+
+
+def verify_release_assets(repo, release, directory):
     if release.get("body") != (directory / "release-notes.txt").read_text(encoding="utf-8"):
-        raise RuntimeError("draft body does not match the original candidate")
+        raise RuntimeError("release body does not match the original candidate")
     pages = github(f"repos/{repo}/releases/{release['id']}/assets?per_page=100", paginate=True)
     assets = [asset for page in pages for asset in page]
     expected = {path.name: path for path in directory.iterdir()}
     if len(assets) != len(expected) or {asset["name"] for asset in assets} != set(expected):
-        raise RuntimeError("draft assets are incomplete or unexpected; repair requires separate maintainer review")
+        raise RuntimeError("release assets are incomplete or unexpected; repair requires separate maintainer review")
     for asset in assets:
         path = expected[asset["name"]]
         digest = f"sha256:{hashlib.sha256(path.read_bytes()).hexdigest()}"
         if asset.get("state") != "uploaded" or asset.get("size") != path.stat().st_size or asset.get("digest") != digest:
-            raise RuntimeError(f"draft asset differs from original candidate or has no verifiable digest: {path.name}")
+            raise RuntimeError(f"release asset differs from original candidate or has no verifiable digest: {path.name}")
 
 
 def cargo_publish(candidate, dry_run):
@@ -315,8 +369,10 @@ def cargo_publish(candidate, dry_run):
     print("Cargo dry-run matched the original candidate; nothing uploaded" if dry_run else "Cargo upload completed; checking immutable registry checksum")
 
 
-def remote_operation(directory, candidate, operation, requested_version, requested_run):
-    repo = authorize(candidate, operation, requested_version, requested_run)
+def remote_operation(directory, candidate, operation, requested_run):
+    if operation not in {"authorize", "draft", "publish-crate", "publish-github"}:
+        raise RuntimeError("unsupported release operation; containers require scripts/container.py publish")
+    repo = authorize(candidate, operation, requested_run)
     commit = candidate["commit"]
     if operation == "authorize":
         print(f"Authorized candidate {commit} from run {requested_run} at the same release workflow and main SHA; no remote writes")
@@ -370,7 +426,6 @@ def main():
     parser.add_argument("--directory", required=True, type=Path)
     parser.add_argument("--commit", help="Require the checkout and candidate to match this full tested Git SHA")
     parser.add_argument("--operation", choices=("prepare", "verify", "check-publish", "authorize", "draft", "publish-crate", "publish-github"), default="prepare")
-    parser.add_argument("--release-version", help="Exact workflow_dispatch version authorization")
     parser.add_argument("--candidate-run", help="Exact successful original build.yml workflow run ID")
     args = parser.parse_args()
     current = version()
@@ -384,7 +439,7 @@ def main():
     if args.operation == "check-publish":
         cargo_publish(candidate, dry_run=True)
         return
-    remote_operation(directory, candidate, args.operation, args.release_version, args.candidate_run)
+    remote_operation(directory, candidate, args.operation, args.candidate_run)
 
 
 if __name__ == "__main__":

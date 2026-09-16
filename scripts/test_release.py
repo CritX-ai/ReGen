@@ -75,7 +75,6 @@ class ReleaseSafety(unittest.TestCase):
             "GITHUB_WORKFLOW_SHA": self.candidate["commit"],
             "GH_REPO": "CritX-ai/ReGen", "GITHUB_REPOSITORY": "CritX-ai/ReGen",
             "GITHUB_EVENT_NAME": "workflow_dispatch", "GITHUB_RUN_ID": "11",
-            "REGEN_RELEASE_VERSION": "1.0.0",
         }
         self.protection = {
             # A single maintainer authorizes publication through workflow_dispatch.
@@ -104,23 +103,31 @@ class ReleaseSafety(unittest.TestCase):
             self.fail("unexpected remote write")
         return copy.deepcopy(self.remote[endpoint])
 
-    def test_version_opt_in_is_required_before_remote_access(self):
-        for value in ("", "1.0.1"):
-            with self.subTest(value=value), patch.dict(os.environ, {"REGEN_RELEASE_VERSION": value}), patch.object(release, "github", side_effect=self.api):
+    def test_local_or_unknown_operations_cannot_authorize_remote_access(self):
+        for operation in ("prepare", "verify", "check-publish", "publish"):
+            with self.subTest(operation=operation), patch.object(release, "github", side_effect=AssertionError("unexpected remote access")):
                 with self.assertRaises(RuntimeError):
-                    release.authorize(self.candidate, "draft", "1.0.0", "10")
+                    release.authorize(self.candidate, operation, "10")
+        self.process.assert_not_called()
+
+    def test_container_authorization_cannot_dispatch_a_github_publication(self):
+        with patch.object(release, "github", side_effect=self.api):
+            self.assertEqual(release.authorize(self.candidate, "publish-container", "10"), "CritX-ai/ReGen")
+            with self.assertRaises(RuntimeError):
+                release.remote_operation(Path("unused"), self.candidate, "publish-container", "10")
+        self.process.assert_not_called()
 
     def test_completed_candidate_is_accepted_but_failed_or_different_sha_is_not(self):
         run = self.remote["repos/CritX-ai/ReGen/actions/runs/10"]
         with patch.object(release, "github", side_effect=self.api):
-            self.assertEqual(release.authorize(self.candidate, "publish-crate", "1.0.0", "10"), "CritX-ai/ReGen")
+            self.assertEqual(release.authorize(self.candidate, "publish-crate", "10"), "CritX-ai/ReGen")
             run["conclusion"] = "failure"
             with self.assertRaises(RuntimeError):
-                release.authorize(self.candidate, "publish-crate", "1.0.0", "10")
+                release.authorize(self.candidate, "publish-crate", "10")
             run["conclusion"] = "success"
             run["head_sha"] = "c" * 40
             with self.assertRaises(RuntimeError):
-                release.authorize(self.candidate, "publish-crate", "1.0.0", "10")
+                release.authorize(self.candidate, "publish-crate", "10")
 
     def test_reruns_cannot_replace_the_original_reviewed_bundle(self):
         run = self.remote["repos/CritX-ai/ReGen/actions/runs/10"]
@@ -132,16 +139,16 @@ class ReleaseSafety(unittest.TestCase):
                     patch.dict(run, {"run_attempt": current}), \
                     patch.object(release, "github", side_effect=self.api):
                 with self.assertRaises(RuntimeError):
-                    release.remote_operation(Path("unused"), self.candidate, "authorize", "1.0.0", "10")
+                    release.remote_operation(Path("unused"), self.candidate, "authorize", "10")
         self.process.assert_not_called()
 
     def test_auto_created_or_wrong_repository_environment_fails_closed(self):
         with patch.object(release, "github", side_effect=self.api):
             with patch.dict(self.protection, {"deployment_branch_policy": None}), self.assertRaises(RuntimeError):
-                release.authorize(self.candidate, "draft", "1.0.0", "10")
+                release.authorize(self.candidate, "draft", "10")
             self.remote["repos/CritX-ai/ReGen"]["full_name"] = "other/ReGen"
             with self.assertRaises(RuntimeError):
-                release.authorize(self.candidate, "draft", "1.0.0", "10")
+                release.authorize(self.candidate, "draft", "10")
 
     def test_candidate_dispatch_workflow_and_checkout_must_share_one_commit(self):
         previous = self.history.previous
@@ -152,21 +159,21 @@ class ReleaseSafety(unittest.TestCase):
                 {"GITHUB_SHA": previous, "GITHUB_WORKFLOW_SHA": previous},
             ):
                 with self.subTest(environment=changed), patch.dict(os.environ, changed), self.assertRaises(RuntimeError):
-                    release.remote_operation(Path("unused"), self.candidate, "draft", "1.0.0", "10")
+                    release.remote_operation(Path("unused"), self.candidate, "draft", "10")
             with self.subTest(candidate=previous), self.assertRaises(RuntimeError):
-                release.remote_operation(Path("unused"), {**self.candidate, "commit": previous}, "draft", "1.0.0", "10")
+                release.remote_operation(Path("unused"), {**self.candidate, "commit": previous}, "draft", "10")
             self.history.git("update-ref", "HEAD", previous)
             with self.subTest(checkout=previous), self.assertRaises(RuntimeError):
-                release.remote_operation(Path("unused"), self.candidate, "draft", "1.0.0", "10")
+                release.remote_operation(Path("unused"), self.candidate, "draft", "10")
         self.process.assert_not_called()
 
     def test_explicit_run_and_build_workflow_cannot_be_substituted(self):
         with patch.object(release, "github", side_effect=self.api):
             for requested in (None, "11", "010", "local"):
                 with self.subTest(requested=requested), self.assertRaises(RuntimeError):
-                    release.authorize(self.candidate, "draft", "1.0.0", requested)
+                    release.authorize(self.candidate, "draft", requested)
             with self.assertRaises(RuntimeError):
-                release.authorize({**self.candidate, "run_id": "12"}, "draft", "1.0.0", "10")
+                release.authorize({**self.candidate, "run_id": "12"}, "draft", "10")
             run = self.remote["repos/CritX-ai/ReGen/actions/runs/10"]
             for changed in (
                 {"id": 12}, {"status": "in_progress"}, {"head_branch": "other"},
@@ -174,7 +181,7 @@ class ReleaseSafety(unittest.TestCase):
                 {"head_repository": {"full_name": "other/ReGen"}},
             ):
                 with self.subTest(run=changed), patch.dict(run, changed), self.assertRaises(RuntimeError):
-                    release.authorize(self.candidate, "draft", "1.0.0", "10")
+                    release.authorize(self.candidate, "draft", "10")
         self.process.assert_not_called()
 
     def test_wrong_workflow_unprotected_environment_and_advanced_main_fail_closed(self):
@@ -185,15 +192,15 @@ class ReleaseSafety(unittest.TestCase):
                 {"GITHUB_RUN_ID": "10"},
             ):
                 with self.subTest(environment=changed), patch.dict(os.environ, changed), self.assertRaises(RuntimeError):
-                    release.authorize(self.candidate, "draft", "1.0.0", "10")
+                    release.authorize(self.candidate, "draft", "10")
             branches = self.remote["repos/CritX-ai/ReGen/environments/release/deployment-branch-policies?per_page=100"]
             with patch.dict(branches, {"total_count": 2}), self.assertRaises(RuntimeError):
-                release.authorize(self.candidate, "draft", "1.0.0", "10")
+                release.authorize(self.candidate, "draft", "10")
             with patch.dict(self.protection, {"deployment_branch_policy": None}), self.assertRaises(RuntimeError):
-                release.authorize(self.candidate, "draft", "1.0.0", "10")
+                release.authorize(self.candidate, "draft", "10")
             self.remote["repos/CritX-ai/ReGen/git/ref/heads/main"]["object"]["sha"] = "c" * 40
             with self.assertRaises(RuntimeError):
-                release.authorize(self.candidate, "draft", "1.0.0", "10")
+                release.authorize(self.candidate, "draft", "10")
         self.process.assert_not_called()
 
     def test_main_advancing_after_authorization_blocks_each_remote_write(self):
@@ -217,7 +224,7 @@ class ReleaseSafety(unittest.TestCase):
                 state = (None, None) if operation == "draft" else (draft, ref)
                 with self.subTest(operation=operation), patch.object(release, "github", side_effect=self.api), patch.object(release, "release_state", return_value=state), patch.object(release, "registry_version", side_effect=registry):
                     with self.assertRaises(RuntimeError):
-                        release.remote_operation(directory, self.candidate, operation, "1.0.0", "10")
+                        release.remote_operation(directory, self.candidate, operation, "10")
             self.process.assert_not_called()
 
     def test_registry_errors_are_not_absence(self):
@@ -243,14 +250,14 @@ class ReleaseSafety(unittest.TestCase):
         for operation in ("draft", "publish-crate", "publish-github"):
             with self.subTest(operation=operation), patch.dict(os.environ, {"GITHUB_EVENT_NAME": "push"}), patch.object(release, "github", side_effect=AssertionError("unexpected remote access")):
                 with self.assertRaises(RuntimeError):
-                    release.remote_operation(Path("unused"), self.candidate, operation, "1.0.0", "10")
+                    release.remote_operation(Path("unused"), self.candidate, operation, "10")
         self.process.assert_not_called()
 
     def test_tag_only_partial_release_cannot_be_overwritten(self):
         ref = {"object": {"type": "commit", "sha": self.candidate["commit"]}}
         with patch.object(release, "release_state", return_value=(None, ref)), patch.object(release, "registry_version", return_value=None), patch.object(release, "github", side_effect=self.api):
             with self.assertRaises(RuntimeError):
-                release.remote_operation(Path("unused"), self.candidate, "draft", "1.0.0", "10")
+                release.remote_operation(Path("unused"), self.candidate, "draft", "10")
         self.process.assert_not_called()
 
     def test_tag_drift_and_main_drift_block_publication(self):
@@ -297,7 +304,7 @@ class ReleaseSafety(unittest.TestCase):
             for operation, crate in states:
                 with self.subTest(operation=operation, crate=crate), patch.object(release, "release_state", return_value=(draft, ref)), patch.object(release, "registry_version", return_value=crate), patch.object(release, "github", side_effect=self.api):
                     with self.assertRaises(RuntimeError):
-                        release.remote_operation(directory, self.candidate, operation, "1.0.0", "10")
+                        release.remote_operation(directory, self.candidate, operation, "10")
             self.process.assert_not_called()
 
     def test_public_index_closes_responses_and_rejects_redirected_absence(self):
@@ -462,22 +469,22 @@ class ReleaseSafety(unittest.TestCase):
 
             self.process.side_effect = process
             with patch.object(release, "github", side_effect=api), patch.object(release, "registry_version", side_effect=lambda _: copy.deepcopy(state["crate"])), patch.dict(os.environ, {"CARGO_REGISTRY_TOKEN": "upload-secret"}):
-                release.remote_operation(directory, self.candidate, "draft", "1.0.0", "10")
+                release.remote_operation(directory, self.candidate, "draft", "10")
                 self.assertEqual(state["assets"], reviewed)
                 self.assertEqual(state["ref"], ref)
                 self.assertTrue(state["release"]["draft"])
                 self.assertIsNone(state["crate"])
-                release.remote_operation(directory, self.candidate, "publish-crate", "1.0.0", "10")
+                release.remote_operation(directory, self.candidate, "publish-crate", "10")
                 self.assertEqual(state["crate"], {"cksum": self.candidate["crate_sha256"], "yanked": False})
                 self.assertTrue(state["release"]["draft"])
                 with self.assertRaises(RuntimeError):
-                    release.remote_operation(directory, self.candidate, "publish-crate", "1.0.0", "10")
-                release.remote_operation(directory, self.candidate, "publish-github", "1.0.0", "10")
+                    release.remote_operation(directory, self.candidate, "publish-crate", "10")
+                release.remote_operation(directory, self.candidate, "publish-github", "10")
                 self.assertFalse(state["release"]["draft"])
                 with self.assertRaises(RuntimeError):
-                    release.remote_operation(directory, self.candidate, "publish-github", "1.0.0", "10")
+                    release.remote_operation(directory, self.candidate, "publish-github", "10")
                 with patch.dict(os.environ, {"GITHUB_EVENT_NAME": "push"}), self.assertRaises(RuntimeError):
-                    release.remote_operation(directory, self.candidate, "draft", None, "10")
+                    release.remote_operation(directory, self.candidate, "draft", "10")
             self.assertEqual(writes, ["tag", "draft", "crate", "github"])
             self.assertEqual(state["uploads"], 1)
             self.assertEqual(state["assets"], reviewed)
@@ -519,17 +526,156 @@ class CandidateBytes(unittest.TestCase):
         return {path.name: path.read_bytes() for path in self.bundle.output.iterdir()}
 
     def test_preparation_retains_exact_inputs_and_verification_is_read_only(self):
+        for name in ("dist/index.html", ".regen-stage/state", ".regen-previous/state", "private/secret", ".maintainer/notes"):
+            path = self.bundle.root / "examples/minimal" / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"not a reviewed source")
         before = self.snapshot()
         candidate = release.prepare(self.bundle.output, "1.0.0", self.bundle.commit)
         self.assertEqual(candidate["crate_sha256"], hashlib.sha256(before[self.bundle.crate.name]).hexdigest())
         after = self.snapshot()
         self.assertEqual({name: after[name] for name in before}, before)
-        self.assertEqual(set(after) - set(before), {"DEPENDENCIES.json", "CANDIDATE.json", "SHA256SUMS", "release-notes.txt"})
+        self.assertEqual(set(after) - set(before), {
+            "DEPENDENCIES.json", "CANDIDATE.json", "SHA256SUMS", "release-notes.txt",
+            "regen-example-1.0.0.tar.gz", "regen-example-1.0.0.zip",
+        })
         self.assertEqual(json.loads(after["DEPENDENCIES.json"])["targets"], self.inventories)
         recorded = dict(line.split("  ", 1)[::-1] for line in after["SHA256SUMS"].decode().splitlines())
         self.assertEqual(recorded, {name: hashlib.sha256(data).hexdigest() for name, data in after.items() if name != "SHA256SUMS"})
+        metadata = {path.name: (path.stat().st_mtime_ns, path.stat().st_ino) for path in self.bundle.output.iterdir()}
         self.assertEqual(release.prepare(self.bundle.output, "1.0.0", self.bundle.commit, verify=True), candidate)
         self.assertEqual(self.snapshot(), after)
+        self.assertEqual(
+            {path.name: (path.stat().st_mtime_ns, path.stat().st_ino) for path in self.bundle.output.iterdir()},
+            metadata,
+        )
+        expected = {
+            "regen-example-1.0.0/LICENSE": self.bundle.sources["LICENSE"],
+            "regen-example-1.0.0/regen.toml": self.bundle.sources["examples/minimal/regen.toml"],
+            "regen-example-1.0.0/content/Über uns.md": self.bundle.sources["examples/minimal/content/Über uns.md"],
+        }
+        for name in ("regen-example-1.0.0.tar.gz", "regen-example-1.0.0.zip"):
+            self.assertEqual(release.archive_files(self.bundle.output / name), expected)
+
+    def rehash(self):
+        files = self.snapshot()
+        (self.bundle.output / "SHA256SUMS").write_text("".join(
+            f"{hashlib.sha256(data).hexdigest()}  {name}\n"
+            for name, data in sorted(files.items()) if name != "SHA256SUMS"
+        ), encoding="utf-8")
+
+    def replace_archive(self, path, entries):
+        if path.suffix == ".zip":
+            with zipfile.ZipFile(path, "w") as archive:
+                for name, data in entries:
+                    archive.writestr(name, data)
+        else:
+            write_tar(path, entries)
+
+    def test_example_inventory_and_bytes_remain_source_bound_after_rehashing(self):
+        release.prepare(self.bundle.output, "1.0.0", self.bundle.commit)
+        base = "regen-example-1.0.0"
+        for name in (f"{base}.tar.gz", f"{base}.zip"):
+            path = self.bundle.output / name
+            original = path.read_bytes()
+            entries = release.archive_files(path)
+            variants = {
+                "missing": [(name, data) for name, data in entries.items() if name != f"{base}/regen.toml"],
+                "extra": [*entries.items(), (f"{base}/dist/index.html", b"unreviewed output")],
+                "changed": [(name, b"unreviewed page" if name.endswith(".md") else data) for name, data in entries.items()],
+                "license": [(name, b"unreviewed license" if name.endswith("/LICENSE") else data) for name, data in entries.items()],
+                "root": [(name.replace(base, "other-root", 1), data) for name, data in entries.items()],
+                "escape": [*entries.items(), (f"{base}/../escaped", b"outside the site")],
+            }
+            for damage, changed in variants.items():
+                with self.subTest(archive=path.name, damage=damage):
+                    self.replace_archive(path, changed)
+                    self.rehash()
+                    before = self.snapshot()
+                    with self.assertRaises(RuntimeError):
+                        release.prepare(self.bundle.output, "1.0.0", self.bundle.commit, verify=True)
+                    self.assertEqual(self.snapshot(), before)
+            path.write_bytes(original)
+            self.rehash()
+
+    def test_example_crate_substitution_fails_even_with_rehashed_candidate(self):
+        release.prepare(self.bundle.output, "1.0.0", self.bundle.commit)
+        self.bundle.entries["examples/minimal/regen.toml"] = b'title = "Unreviewed"\n'
+        self.bundle.retain()
+        for name in ("regen-example-1.0.0.tar.gz", "regen-example-1.0.0.zip"):
+            path = self.bundle.output / name
+            entries = release.archive_files(path)
+            entries["regen-example-1.0.0/regen.toml"] = self.bundle.entries["examples/minimal/regen.toml"]
+            self.replace_archive(path, entries.items())
+        candidate_path = self.bundle.output / "CANDIDATE.json"
+        candidate = json.loads(candidate_path.read_bytes())
+        candidate["crate_sha256"] = self.bundle.receipt["crate_sha256"]
+        candidate_path.write_text(json.dumps(candidate), encoding="utf-8")
+        self.rehash()
+        before = self.snapshot()
+        with self.assertRaises(RuntimeError):
+            release.prepare(self.bundle.output, "1.0.0", self.bundle.commit, verify=True)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_missing_example_asset_is_not_recreated_by_verification(self):
+        release.prepare(self.bundle.output, "1.0.0", self.bundle.commit)
+        (self.bundle.output / "regen-example-1.0.0.zip").unlink()
+        self.rehash()
+        before = self.snapshot()
+        with self.assertRaises(RuntimeError):
+            release.prepare(self.bundle.output, "1.0.0", self.bundle.commit, verify=True)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_preexisting_example_asset_is_never_overwritten_or_partially_replaced(self):
+        path = self.bundle.output / "regen-example-1.0.0.zip"
+        path.write_bytes(b"previously retained archive")
+        before = self.snapshot()
+        with self.assertRaises(RuntimeError):
+            release.prepare(self.bundle.output, "1.0.0", self.bundle.commit)
+        self.assertEqual(self.snapshot(), before)
+        with self.assertRaises(RuntimeError):
+            release.package_examples(self.bundle.output, "1.0.0", self.bundle.sources)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_example_archives_are_deterministic_across_source_order_and_metadata(self):
+        release.prepare(self.bundle.output, "1.0.0", self.bundle.commit)
+        destination = self.directory / "standalone"
+        destination.mkdir()
+        for name in self.bundle.sources:
+            path = self.bundle.root / name
+            path.chmod(0o700)
+            os.utime(path, (123456789, 123456789))
+        sources = check_cargo.source_inventory({
+            "package": {"include": [f"/{name}" for name in reversed(self.bundle.sources)]},
+        })
+        release.package_examples(destination, "1.0.0", sources)
+        self.assertEqual(
+            {path.name: path.read_bytes() for path in destination.iterdir()},
+            {name: (self.bundle.output / name).read_bytes() for name in ("regen-example-1.0.0.tar.gz", "regen-example-1.0.0.zip")},
+        )
+
+    def test_cli_binds_candidate_version_and_tag_to_cargo_even_with_fresh_checksums(self):
+        release.prepare(self.bundle.output, "1.0.0", self.bundle.commit)
+        original = self.snapshot()
+        arguments = ["release.py", "--directory", str(self.bundle.output),
+                     "--commit", self.bundle.commit, "--operation", "verify"]
+        with patch("sys.argv", arguments), patch("package.ROOT", self.bundle.root), \
+                patch.object(release.subprocess, "check_output", return_value=self.bundle.commit + "\n"):
+            release.main()
+            self.assertEqual(self.snapshot(), original)
+            candidate_path = self.bundle.output / "CANDIDATE.json"
+            candidate = json.loads(original["CANDIDATE.json"])
+            candidate.update(version="1.0.1", tag="v1.0.1")
+            candidate_path.write_text(json.dumps(candidate), encoding="utf-8")
+            changed = self.snapshot()
+            (self.bundle.output / "SHA256SUMS").write_text("".join(
+                f"{hashlib.sha256(data).hexdigest()}  {name}\n"
+                for name, data in sorted(changed.items()) if name != "SHA256SUMS"
+            ), encoding="utf-8")
+            before = self.snapshot()
+            with self.assertRaises(RuntimeError):
+                release.main()
+            self.assertEqual(self.snapshot(), before)
 
     def test_candidate_identity_and_notes_drift_are_not_repaired_by_verification(self):
         release.prepare(self.bundle.output, "1.0.0", self.bundle.commit)
@@ -592,6 +738,15 @@ class CandidateBytes(unittest.TestCase):
                 archive.writestr("LICENSE", b"replacement")
         with self.assertRaises(RuntimeError):
             release.archive_files(path)
+        for name, mode in (("directory/", 0o040755), ("linked", 0o120644)):
+            with self.subTest(member=name):
+                member = zipfile.ZipInfo(name)
+                member.create_system = 3
+                member.external_attr = mode << 16
+                with zipfile.ZipFile(path, "w") as archive:
+                    archive.writestr(member, b"LICENSE")
+                with self.assertRaises(RuntimeError):
+                    release.archive_files(path)
 
 
 if __name__ == "__main__":

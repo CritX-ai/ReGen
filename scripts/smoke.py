@@ -112,7 +112,7 @@ def main():
         snapshots = []
         for name in ("first", "second"):
             site = root / name
-            shutil.copytree(args.site, site, ignore=shutil.ignore_patterns("dist", ".regen-stage", ".regen-previous"))
+            shutil.copytree(args.site, site, ignore=shutil.ignore_patterns("dist", "review", ".regen-stage", ".regen-previous"))
             subprocess.run([str(binary), "build", "--site", str(site)], check=True)
             snapshots.append(inspect_site(site))
             if name == "first":

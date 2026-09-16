@@ -4,7 +4,8 @@
 The installed hook executes the staged checker and verifies an exact index snapshot,
 not unstaged fixes. It never commits, pushes, uploads or claims hosted CI success.
 Requires the pinned Rust toolchain with rustfmt, Clippy and llvm-tools-preview,
-cargo-llvm-cov 0.9.1, and strace. Cargo dependencies must already be fetched.
+cargo-llvm-cov 0.9.1, strace, and rootless Podman (preferred) or Docker.
+Cargo dependencies must already be fetched; the container runtime must be usable.
 """
 
 import argparse
@@ -67,7 +68,7 @@ def verify(source, work, cache):
     # Isolate Cargo and nested Git fixtures from the committing repository/index.
     # Publication checks have no need for the caller's registry or GitHub tokens.
     environment = {key: value for key, value in os.environ.items()
-                   if not key.startswith("GIT_") and key not in {"GH_TOKEN", "GITHUB_TOKEN"}
+                   if not key.startswith("GIT_") and key not in {"GH_TOKEN", "GITHUB_TOKEN", "GHCR_TOKEN", "DOCKER_AUTH_CONFIG"}
                    and not (key.startswith("CARGO_") and key.endswith("_TOKEN"))}
     environment["CARGO_TARGET_DIR"] = str(cache)
     toolchain = tomllib.loads((source / "rust-toolchain.toml").read_text())["toolchain"]["channel"]
@@ -82,7 +83,19 @@ def verify(source, work, cache):
     run(*cargo, "fmt", "--all", "--", "--check")
     run(*cargo, "clippy", "--frozen", "--all-targets", "--", "-D", "warnings")
     run(*cargo, "test", "--frozen", "--all-targets")
+    run(sys.executable, "scripts/check_features.py")
     run(sys.executable, "-m", "unittest", "discover", "-s", "scripts", "-p", "test_*.py")
+    report = work / "rust.json"
+    run(*cargo, "llvm-cov", "clean", "--workspace", "--frozen")
+    run(*cargo, "llvm-cov", "--release", "--frozen", "--all-targets", "--all-features", "--no-report", "--", "--include-ignored")
+    run(*cargo, "llvm-cov", "--release", "--frozen", "--all-targets", "--no-default-features",
+        "--no-report", "--", "--include-ignored")
+    run(*cargo, "llvm-cov", "report", "--release", "--frozen", "--json", "--output-path", report,
+        "--ignore-filename-regex", "/tests/|/examples/")
+    run(*cargo, "llvm-cov", "report", "--release", "--fail-uncovered-lines", "0", "--ignore-filename-regex", "/tests/|/examples/")
+    run(sys.executable, "scripts/check_rust_coverage.py", "--report", report,
+        "--output", work / "rust-source-regions.json", "--require-full")
+    # Build and smoke the default-feature artifacts only after every coverage gate.
     run(*cargo, "build", "--release", "--frozen", "--bin", "regen", "--example", "build_docs")
     binary = cache / "release" / "regen"
     run(sys.executable, "scripts/smoke.py", "--binary", binary, "--target", target)
@@ -90,13 +103,8 @@ def verify(source, work, cache):
     for output in docs:
         run(cache / "release/examples/build_docs", "--base-url", "https://regen.critx.ai/", "--output", output)
     run(sys.executable, "scripts/check_docs.py", "--site", docs[0], "--base-url", "https://regen.critx.ai/", "--compare", docs[1])
-    report = work / "rust.json"
-    run(*cargo, "llvm-cov", "--release", "--frozen", "--all-targets", "--json", "--output-path", report,
-        "--ignore-filename-regex", "/tests/|/examples/", "--", "--include-ignored")
-    run(*cargo, "llvm-cov", "report", "--release", "--fail-uncovered-lines", "0", "--ignore-filename-regex", "/tests/|/examples/")
-    run(sys.executable, "scripts/check_rust_coverage.py", "--report", report,
-        "--output", work / "rust-source-regions.json", "--require-full")
     run(sys.executable, "scripts/package.py", "--target", target, "--binary", binary, "--output", work / "native")
+    run(sys.executable, "scripts/container.py", "check", "--target", target, "--cache", cache / "container")
     run(sys.executable, "scripts/check_cargo.py", "--target", target, "--allow-dirty", "--publish-dry-run")
 
 

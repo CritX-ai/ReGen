@@ -1,195 +1,167 @@
-<section class="architecture-explorer" aria-labelledby="build-overview">
-  <h2 id="build-overview">Local files. Visible machinery.</h2>
-  <p class="architecture-instruction">Hover or focus a node for context. Follow it for the details below.</p>
-  <fieldset class="architecture-console">
-    <legend class="architecture-legend">Choose a build context</legend>
-    <input class="architecture-choice" type="radio" name="architecture-view" id="architecture-view-all" value="overview" aria-controls="architecture-panel-all" checked>
-    <label class="architecture-tab" for="architecture-view-all">Whole build</label>
-    <input class="architecture-choice" type="radio" name="architecture-view" id="architecture-view-crate" value="crate" aria-controls="architecture-panel-crate">
-    <label class="architecture-tab" id="crate-map" for="architecture-view-crate">Crate</label>
-    <input class="architecture-choice" type="radio" name="architecture-view" id="architecture-view-input" value="inputs" aria-controls="architecture-panel-input">
-    <label class="architecture-tab" id="input-gate" for="architecture-view-input">Inputs</label>
-    <input class="architecture-choice" type="radio" name="architecture-view" id="architecture-view-routes" value="routes" aria-controls="architecture-panel-routes">
-    <label class="architecture-tab" id="translation-routes" for="architecture-view-routes">Pair &amp; route</label>
-    <input class="architecture-choice" type="radio" name="architecture-view" id="architecture-view-stage" value="stage" aria-controls="architecture-panel-stage">
-    <label class="architecture-tab" id="rendered-output" for="architecture-view-stage">Stage</label>
-    <input class="architecture-choice" type="radio" name="architecture-view" id="architecture-view-replace" value="replacement" aria-controls="architecture-panel-replace">
-    <label class="architecture-tab" id="output-replacement" for="architecture-view-replace">Replace</label>
-
+<section class="architecture-explorer" aria-labelledby="software-architecture">
+  <h2 id="software-architecture">Software architecture</h2>
+  <p class="architecture-instruction">One Cargo package, a command and a library. Hover or focus a node to see its job; follow the link for details and source.</p>
+  <fieldset class="architecture-console architecture-software">
+    <legend class="architecture-legend">Choose a software architecture focus</legend>
+    <input class="architecture-choice" type="radio" name="software-view" id="architecture-view-crate" value="crate" aria-controls="architecture-panel-crate" checked>
+    <label class="architecture-tab" id="crate-map" for="architecture-view-crate">Package &amp; modules</label>
+    <input class="architecture-choice" type="radio" name="software-view" id="architecture-view-dependencies" value="dependencies" aria-controls="architecture-panel-dependencies">
+    <label class="architecture-tab" id="dependency-overview" for="architecture-view-dependencies">Dependency overview</label>
     <div class="architecture-screen">
-      <figure class="architecture-panel architecture-panel-all" id="architecture-panel-all">
-        <svg class="architecture-map architecture-map-wide" viewBox="0 0 860 412" role="group" aria-labelledby="architecture-map-title architecture-map-description">
-          <title id="architecture-map-title">From local source to a replacement static site</title>
-          <desc id="architecture-map-description">Configuration and YAML converge at validation, then translations become routes. Templates, assets and public files meet in a sibling stage. Only completed preparation can replace dist. Each node links to its technical explanation.</desc>
-          <defs>
-            <marker id="architecture-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L7 4L0 8Z"/></marker>
-            <marker id="architecture-old-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L7 4L0 8Z"/></marker>
-          </defs>
-          <path class="architecture-zone" d="M216 32H677L697 52V312H216Z"/>
-          <text class="architecture-svg-note" x="238" y="56">PREPARATION</text>
-          <g class="architecture-wires">
-            <path d="M178 117H208M178 179H208V117"/>
-            <path d="M208 117H232" marker-end="url(#architecture-arrow)"/>
-            <path d="M394 117H444" marker-end="url(#architecture-arrow)"/>
-            <path d="M536 150V206" marker-end="url(#architecture-arrow)"/>
-            <path d="M178 241H444" marker-end="url(#architecture-arrow)"/>
-            <path d="M178 314H404V264H444" marker-end="url(#architecture-arrow)"/>
-            <path d="M178 376H424V288H444" marker-end="url(#architecture-arrow)"/>
-            <path d="M626 256H730" marker-end="url(#architecture-arrow)"/>
-            <path class="architecture-wire-old" d="M786 337V300" marker-end="url(#architecture-old-arrow)"/>
-          </g>
-          <circle class="architecture-junction" cx="208" cy="117" r="3"/>
-          <a class="architecture-inspect" data-node="1" href="#invariants-worth-knowing" aria-label="Configuration" aria-describedby="overview-note-1"><g class="architecture-svg-source"><rect x="20" y="92" width="158" height="50"/><text x="99" y="123" text-anchor="middle">regen.toml</text></g></a>
-          <a class="architecture-inspect" data-node="2" href="#invariants-worth-knowing" aria-label="Localized content" aria-describedby="overview-note-2"><g class="architecture-svg-source"><rect x="20" y="154" width="158" height="50"/><text x="99" y="185" text-anchor="middle">localized YAML</text></g></a>
-          <a class="architecture-inspect" data-node="3" href="#invariants-worth-knowing" aria-label="Templates" aria-describedby="overview-note-3"><g class="architecture-svg-source"><rect x="20" y="216" width="158" height="50"/><text x="99" y="247" text-anchor="middle">templates/</text></g></a>
-          <a class="architecture-inspect" data-node="4" href="#invariants-worth-knowing" aria-label="Assets" aria-describedby="overview-note-4"><g class="architecture-svg-source"><rect x="20" y="289" width="158" height="50"/><text x="99" y="320" text-anchor="middle">assets/</text></g></a>
-          <a class="architecture-inspect" data-node="5" href="#invariants-worth-knowing" aria-label="Public files" aria-describedby="overview-note-5"><g class="architecture-svg-source"><rect x="20" y="351" width="158" height="50"/><text x="99" y="382" text-anchor="middle">public/</text></g></a>
-          <a class="architecture-inspect" data-node="6" href="#invariants-worth-knowing" aria-label="Validate inputs" aria-describedby="overview-note-6"><g class="architecture-svg-gate"><path d="M254 81H376L394 117L376 153H254L236 117Z"/><text x="315" y="123" text-anchor="middle">Validate</text></g></a>
-          <a class="architecture-inspect" data-node="7" href="#hosting-paths-are-not-disk-paths" aria-label="Pair translations and route pages" aria-describedby="overview-note-7"><g class="architecture-svg-route"><rect x="448" y="84" width="178" height="66"/><text x="537" y="123" text-anchor="middle">Pair &amp; route</text></g></a>
-          <a class="architecture-inspect" data-node="8" href="#output-ownership-and-interruption-recovery" aria-label="Prepare sibling stage" aria-describedby="overview-note-8"><g class="architecture-svg-stage"><path d="M448 210H604L626 232V300H448Z"/><text x="537" y="262" text-anchor="middle">.regen-stage/</text></g></a>
-          <a class="architecture-inspect" data-node="9" href="#output-ownership-and-interruption-recovery" aria-label="Install completed output" aria-describedby="overview-note-9"><g class="architecture-svg-output"><rect x="734" y="218" width="105" height="78"/><text x="786" y="263" text-anchor="middle">dist/</text></g></a>
-          <a class="architecture-inspect" data-node="10" href="#output-ownership-and-interruption-recovery" aria-label="Preserve previous output" aria-describedby="overview-note-10"><g class="architecture-svg-old"><rect x="734" y="337" width="105" height="52"/><text x="786" y="369" text-anchor="middle">old dist/</text></g></a>
-        </svg>
-        <svg class="architecture-map architecture-map-narrow" viewBox="0 0 340 484" role="group" aria-labelledby="architecture-mobile-title architecture-mobile-description">
-          <title id="architecture-mobile-title">Prepare beside the old site, then replace it</title>
-          <desc id="architecture-mobile-description">Local inputs flow through validation and routing. Templates, assets and public files join in a stage. Installation replaces dist using two renames. Select a node to read the details below.</desc>
-          <defs><marker id="architecture-mobile-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L7 4L0 8Z"/></marker></defs>
-          <g class="architecture-wires" marker-end="url(#architecture-mobile-arrow)"><path d="M170 68V96"/><path d="M170 160V188"/><path d="M170 252V324"/><path d="M62 305V324"/><path d="M278 305V324"/><path d="M170 388V420"/></g>
-          <a class="architecture-inspect" data-node="1" href="#invariants-worth-knowing" aria-label="Local source inputs" aria-describedby="overview-note-1"><g class="architecture-svg-source"><rect x="24" y="16" width="292" height="52"/><text x="170" y="48" text-anchor="middle">TOML + localized YAML</text></g></a>
-          <a class="architecture-inspect" data-node="6" href="#invariants-worth-knowing" aria-label="Validate inputs" aria-describedby="overview-note-6"><g class="architecture-svg-gate"><path d="M65 100H275L295 130L275 160H65L45 130Z"/><text x="170" y="136" text-anchor="middle">Validate</text></g></a>
-          <a class="architecture-inspect" data-node="7" href="#hosting-paths-are-not-disk-paths" aria-label="Pair translations and routes" aria-describedby="overview-note-7"><g class="architecture-svg-route"><rect x="76" y="192" width="188" height="60"/><text x="170" y="228" text-anchor="middle">Pair &amp; route</text></g></a>
-          <a class="architecture-inspect" data-node="4" href="#invariants-worth-knowing" aria-label="Assets" aria-describedby="overview-note-4"><text class="architecture-svg-port" x="62" y="292" text-anchor="middle">assets/</text></a>
-          <a class="architecture-inspect" data-node="5" href="#invariants-worth-knowing" aria-label="Public files" aria-describedby="overview-note-5"><text class="architecture-svg-port" x="278" y="292" text-anchor="middle">public/</text></a>
-          <a class="architecture-inspect" data-node="8" href="#output-ownership-and-interruption-recovery" aria-label="Prepare sibling stage" aria-describedby="overview-note-8"><g class="architecture-svg-stage"><path d="M24 328H294L316 350V388H24Z"/><text x="170" y="365" text-anchor="middle">.regen-stage/</text></g></a>
-          <a class="architecture-inspect" data-node="9" href="#output-ownership-and-interruption-recovery" aria-label="Install completed output" aria-describedby="overview-note-9"><g class="architecture-svg-output"><rect x="76" y="424" width="188" height="48"/><text x="170" y="455" text-anchor="middle">dist/</text></g></a>
-        </svg>
-        <figcaption class="architecture-readout">
-          <span class="architecture-caption-default">Prepare beside the old site. Replace only when the new build is complete.</span>
-          <span class="architecture-note" data-for="1" id="overview-note-1"><strong>Local inputs.</strong> TOML defines the URL, languages and paths; localized YAML supplies the content. Generation makes no network requests.</span>
-          <span class="architecture-note" data-for="2" id="overview-note-2"><strong>Explicit translations.</strong> Every language supplies the same page IDs. Slugs can differ; missing translations fail.</span>
-          <span class="architecture-note" data-for="3" id="overview-note-3"><strong>Tera templates.</strong> Local HTML templates render with content and localized URL context; there is no plugin host.</span>
-          <span class="architecture-note" data-for="4" id="overview-note-4"><strong>Assets.</strong> Minify standalone CSS, preserve JavaScript and media, then fingerprint the complete asset tree.</span>
-          <span class="architecture-note" data-for="5" id="overview-note-5"><strong>Public files.</strong> Copy bytes unchanged to stable paths. No optimization or sanitization.</span>
-          <span class="architecture-note" data-for="6" id="overview-note-6"><strong>Fail on ambiguity.</strong> Reject invalid configuration, layouts, duplicate keys, unsafe paths and incomplete translations.</span>
-          <span class="architecture-note" data-for="7" id="overview-note-7"><strong>Identity becomes a route.</strong> Pair page IDs across languages, then derive each localized URL from its slug.</span>
-          <span class="architecture-note" data-for="8" id="overview-note-8"><strong>Sibling stage.</strong> Templates render HTML here; assets and public files join it. Write the sitemap and manifest last. Old output stays untouched.</span>
-          <span class="architecture-note" data-for="9" id="overview-note-9"><strong>Install.</strong> Two renames promote the completed stage. The brief absent-dist window is not an atomic exchange.</span>
-          <span class="architecture-note" data-for="10" id="overview-note-10"><strong>Previous output.</strong> Move it aside only after preparation. Retain it for attempted rollback until promotion succeeds.</span>
-        </figcaption>
-      </figure>
-
-      <figure class="architecture-panel architecture-panel-crate" id="architecture-panel-crate">
+      <figure class="architecture-panel architecture-panel-crate" id="architecture-panel-crate" aria-labelledby="crate-map">
         <svg class="architecture-map architecture-map-wide" viewBox="0 0 860 440" role="group" aria-labelledby="crate-map-title crate-map-description">
-          <title id="crate-map-title">ReGen crate composition and dependency direction</title>
-          <desc id="crate-map-description">The CLI and documentation example call the public library build function. The library coordinates configuration, content and assets. All share the filesystem boundary. These are module dependencies, not the chronological build sequence.</desc>
-          <defs>
-            <marker id="crate-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L7 4L0 8Z"/></marker>
-            <marker class="architecture-arrow-direct" id="crate-direct-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L7 4L0 8Z"/></marker>
-          </defs>
+          <title id="crate-map-title">The regen binary calls the regen library</title>
+          <desc id="crate-map-description">main.rs calls lib.rs, which coordinates config, content, assets, html, hooks and files. HTML and hooks are optional Cargo features. Arrows show calls between modules, not build order or every dependency.</desc>
+          <defs><marker id="crate-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L7 4L0 8Z"/></marker></defs>
           <path class="architecture-zone" d="M14 94H826L844 112V434H14Z"/>
           <text class="architecture-svg-note" x="36" y="121">regen library</text>
           <g class="architecture-wires">
             <path d="M430 66V112" marker-end="url(#crate-arrow)"/>
-            <path class="architecture-wire-direct" d="M246 41H294V148H331" marker-end="url(#crate-direct-arrow)"/>
             <path d="M430 180V208H131M430 208H729"/>
             <path d="M131 208V231M430 208V231M729 208V231" marker-end="url(#crate-arrow)"/>
-            <path d="M131 299V368M430 299V368M729 299V368" marker-end="url(#crate-arrow)"/>
-            <path class="architecture-wire-direct" d="M525 148H580V368" marker-end="url(#crate-direct-arrow)"/>
+            <path d="M525 148H834V320H131"/>
+            <path d="M131 320V348M430 320V348M729 320V348" marker-end="url(#crate-arrow)"/>
           </g>
-          <circle class="architecture-junction" cx="430" cy="208" r="3"/>
-          <a class="architecture-inspect" data-node="1" href="#cli-boundary" aria-describedby="crate-note-1"><g class="architecture-svg-source"><rect x="335" y="16" width="190" height="50"/><text x="430" y="47" text-anchor="middle">main.rs</text></g></a>
-          <a class="architecture-inspect" data-node="2" href="#outside-the-runtime" aria-describedby="crate-note-2"><g class="architecture-svg-source"><rect x="36" y="16" width="210" height="50"/><text x="141" y="47" text-anchor="middle">build_docs.rs</text></g></a>
-          <a class="architecture-inspect" data-node="3" href="#build-coordinator" aria-describedby="crate-note-3"><g class="architecture-svg-stage"><rect x="335" y="116" width="190" height="64"/><text x="430" y="154" text-anchor="middle">lib.rs · build()</text></g></a>
-          <a class="architecture-inspect" data-node="4" href="#input-model" aria-describedby="crate-note-4"><g class="architecture-svg-gate"><rect x="36" y="235" width="190" height="64"/><text x="131" y="273" text-anchor="middle">config.rs</text></g></a>
-          <a class="architecture-inspect" data-node="5" href="#input-model" aria-describedby="crate-note-5"><g class="architecture-svg-route"><rect x="335" y="235" width="190" height="64"/><text x="430" y="273" text-anchor="middle">content.rs</text></g></a>
-          <a class="architecture-inspect" data-node="6" href="#asset-pipeline" aria-describedby="crate-note-6"><g class="architecture-svg-source"><rect x="634" y="235" width="190" height="64"/><text x="729" y="273" text-anchor="middle">assets.rs</text></g></a>
-          <a class="architecture-inspect" data-node="7" href="#filesystem-boundary" aria-describedby="crate-note-7"><g class="architecture-svg-output"><rect x="36" y="372" width="788" height="50"/><text x="430" y="404" text-anchor="middle">files.rs · validation, I/O, transaction</text></g></a>
+          <a class="architecture-inspect" id="software-node-cli" data-node="1" href="#cli-boundary" aria-describedby="crate-note-1"><g class="architecture-svg-source"><rect x="335" y="16" width="190" height="50"/><text x="430" y="47" text-anchor="middle">main.rs · binary</text></g></a>
+          <a class="architecture-inspect" id="software-node-library" data-node="2" href="#build-coordinator" aria-describedby="crate-note-2"><g class="architecture-svg-stage"><rect x="335" y="116" width="190" height="64"/><text x="430" y="154" text-anchor="middle">lib.rs · public API</text></g></a>
+          <a class="architecture-inspect" id="software-node-config" data-node="3" href="#input-model" aria-describedby="crate-note-3"><g class="architecture-svg-gate"><rect x="36" y="235" width="190" height="64"/><text x="131" y="273" text-anchor="middle">config.rs</text></g></a>
+          <a class="architecture-inspect" id="software-node-content" data-node="4" href="#input-model" aria-describedby="crate-note-4"><g class="architecture-svg-route"><rect x="335" y="235" width="190" height="64"/><text x="430" y="273" text-anchor="middle">content.rs</text></g></a>
+          <a class="architecture-inspect" id="software-node-assets" data-node="5" href="#asset-pipeline" aria-describedby="crate-note-5"><g class="architecture-svg-source"><rect x="634" y="235" width="190" height="64"/><text x="729" y="273" text-anchor="middle">assets.rs</text></g></a>
+          <a class="architecture-inspect" id="software-node-html" data-node="6" href="#asset-pipeline" aria-describedby="crate-note-6"><g class="architecture-svg-gate"><rect x="36" y="352" width="190" height="64"/><text x="131" y="379" text-anchor="middle">html.rs</text><text class="architecture-svg-port" x="131" y="402" text-anchor="middle">feature: minify-html</text></g></a>
+          <a class="architecture-inspect" id="software-node-hooks" data-node="7" href="#trusted-process-boundary" aria-describedby="crate-note-7"><g class="architecture-svg-gate"><rect x="335" y="352" width="190" height="64"/><text x="430" y="379" text-anchor="middle">hooks.rs</text><text class="architecture-svg-port" x="430" y="402" text-anchor="middle">feature: hooks</text></g></a>
+          <a class="architecture-inspect" id="software-node-files" data-node="8" href="#filesystem-boundary" aria-describedby="crate-note-8"><g class="architecture-svg-output"><rect x="634" y="352" width="190" height="64"/><text x="729" y="390" text-anchor="middle">files.rs</text></g></a>
         </svg>
-        <svg class="architecture-map architecture-map-narrow" viewBox="0 0 340 432" role="group" aria-labelledby="crate-mobile-title crate-mobile-description">
-          <title id="crate-mobile-title">One public build API, four private modules</title>
-          <desc id="crate-mobile-description">The CLI and docs example call lib.rs. Configuration, content and assets share files.rs with the build coordinator. Follow each module for its responsibility and design rationale.</desc>
-          <defs>
-            <marker id="crate-mobile-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L7 4L0 8Z"/></marker>
-            <marker class="architecture-arrow-direct" id="crate-mobile-direct-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L7 4L0 8Z"/></marker>
-          </defs>
-          <g class="architecture-wires">
-            <path d="M88 68V96H132V128" marker-end="url(#crate-mobile-arrow)"/>
-            <path class="architecture-wire-direct" d="M252 68V96H208V128" marker-end="url(#crate-mobile-direct-arrow)"/>
-            <path d="M170 192V220H58M170 220H282"/>
-            <path d="M58 220V248M170 220V248M282 220V248" marker-end="url(#crate-mobile-arrow)"/>
-            <path d="M58 312V368M170 312V368M282 312V368" marker-end="url(#crate-mobile-arrow)"/>
-            <path class="architecture-wire-direct" d="M76 164H4V397H20" marker-end="url(#crate-mobile-direct-arrow)"/>
-          </g>
-          <a class="architecture-inspect" data-node="1" href="#cli-boundary" aria-describedby="crate-note-1"><g class="architecture-svg-source"><rect x="24" y="16" width="128" height="52"/><text x="88" y="48" text-anchor="middle">main.rs</text></g></a>
-          <a class="architecture-inspect" data-node="2" href="#outside-the-runtime" aria-describedby="crate-note-2"><g class="architecture-svg-source"><rect x="188" y="16" width="128" height="52"/><text x="252" y="48" text-anchor="middle">docs example</text></g></a>
-          <a class="architecture-inspect" data-node="3" href="#build-coordinator" aria-describedby="crate-note-3"><g class="architecture-svg-stage"><rect x="76" y="132" width="188" height="60"/><text x="170" y="168" text-anchor="middle">lib.rs · build()</text></g></a>
-          <a class="architecture-inspect" data-node="4" href="#input-model" aria-describedby="crate-note-4"><g class="architecture-svg-gate"><rect x="12" y="252" width="92" height="60"/><text x="58" y="287" text-anchor="middle">config.rs</text></g></a>
-          <a class="architecture-inspect" data-node="5" href="#input-model" aria-describedby="crate-note-5"><g class="architecture-svg-route"><rect x="124" y="252" width="92" height="60"/><text x="170" y="287" text-anchor="middle">content.rs</text></g></a>
-          <a class="architecture-inspect" data-node="6" href="#asset-pipeline" aria-describedby="crate-note-6"><g class="architecture-svg-source"><rect x="236" y="252" width="92" height="60"/><text x="282" y="287" text-anchor="middle">assets.rs</text></g></a>
-          <a class="architecture-inspect" data-node="7" href="#filesystem-boundary" aria-describedby="crate-note-7"><g class="architecture-svg-output"><rect x="24" y="372" width="292" height="50"/><text x="170" y="404" text-anchor="middle">files.rs</text></g></a>
-        </svg>
-        <figcaption class="architecture-readout">
-          <span class="architecture-caption-default">Arrows mean “depends on.” Green separates the docs entry and direct filesystem call from the other module dependencies.</span>
-          <span class="architecture-note" data-for="1" id="crate-note-1"><strong>CLI boundary.</strong> Clap parses the command; main calls the same library API available to Rust consumers. No second build implementation.</span>
-          <span class="architecture-note" data-for="2" id="crate-note-2"><strong>Repository-only preprocessing.</strong> The docs example converts Markdown and prepares inputs, then calls build(). It is not part of the installed generator.</span>
-          <span class="architecture-note" data-for="3" id="crate-note-3"><strong>Build coordinator.</strong> lib.rs prepares template context, renders pages, copies public files and writes the sitemap and manifest before installing the finished site.</span>
-          <span class="architecture-note" data-for="4" id="crate-note-4"><strong>Configuration.</strong> config.rs reads TOML and checks the URL, languages and source paths before the build uses them.</span>
-          <span class="architecture-note" data-for="5" id="crate-note-5"><strong>Content.</strong> content.rs validates the locale inventory and YAML, pairs page identities and derives routes. It also consumes config.rs’s language/URL model.</span>
-          <span class="architecture-note" data-for="6" id="crate-note-6"><strong>Assets.</strong> assets.rs owns CSS optimization and length-prefixed streaming hashes. Keeping this byte pipeline separate avoids mixing rendering with cache identity.</span>
-          <span class="architecture-note" data-for="7" id="crate-note-7"><strong>Filesystem boundary.</strong> files.rs centralizes portable names, bounded reads, exclusive writes, staging and recovery. All callers share the same protection rules.</span>
-        </figcaption>
-      </figure>
-
-      <figure class="architecture-panel architecture-panel-input" id="architecture-panel-input" aria-labelledby="architecture-input-title">
-        <h3 id="architecture-input-title">Ambiguity stops here.</h3>
-        <div class="architecture-input-diagram">
-          <div class="architecture-input-streams">
-            <a class="architecture-inspect" data-node="1" href="#invariants-worth-knowing" aria-describedby="input-note-1"><code>regen.toml</code></a>
-            <a class="architecture-inspect" data-node="2" href="#invariants-worth-knowing" aria-describedby="input-note-2"><code>content/</code></a>
-            <a class="architecture-inspect" data-node="3" href="#trust-and-scope" aria-describedby="input-note-3"><strong>Source files</strong></a>
-          </div>
-          <a class="architecture-gate-node architecture-inspect" data-node="4" href="#invariants-worth-knowing" aria-describedby="input-note-4"><strong>Validate</strong></a>
-          <div class="architecture-gate-outcomes">
-            <a class="architecture-pass architecture-inspect" data-node="5" href="#output-ownership-and-interruption-recovery" aria-describedby="input-note-5"><strong>Prepare</strong></a>
-            <a class="architecture-stop architecture-inspect" data-node="6" href="#output-ownership-and-interruption-recovery" aria-describedby="input-note-6"><strong>Error</strong></a>
-          </div>
+        <div class="architecture-map-narrow architecture-module-list">
+          <a class="architecture-inspect" data-node="1" href="#cli-boundary" aria-describedby="crate-note-1"><code>main.rs</code><span>regen binary</span></a>
+          <a class="architecture-inspect" data-node="2" href="#build-coordinator" aria-describedby="crate-note-2"><code>lib.rs</code><span>regen library · public API</span></a>
+          <p>The library coordinates these modules</p>
+          <a class="architecture-inspect" data-node="3" href="#input-model" aria-describedby="crate-note-3"><code>config.rs</code><span>Configuration &amp; resolution</span></a>
+          <a class="architecture-inspect" data-node="4" href="#input-model" aria-describedby="crate-note-4"><code>content.rs</code><span>Translations &amp; routes</span></a>
+          <a class="architecture-inspect" data-node="5" href="#asset-pipeline" aria-describedby="crate-note-5"><code>assets.rs</code><span>Asset bytes &amp; digest</span></a>
+          <a class="architecture-inspect" data-node="6" href="#asset-pipeline" aria-describedby="crate-note-6"><code>html.rs</code><span>Feature: minify-html</span></a>
+          <a class="architecture-inspect" data-node="7" href="#trusted-process-boundary" aria-describedby="crate-note-7"><code>hooks.rs</code><span>Feature: hooks · non-default</span></a>
+          <a class="architecture-inspect" data-node="8" href="#filesystem-boundary" aria-describedby="crate-note-8"><code>files.rs</code><span>Paths, I/O &amp; replacement</span></a>
         </div>
         <figcaption class="architecture-readout">
-          <span class="architecture-caption-default">One valid interpretation — or a build error.</span>
-          <span class="architecture-note" data-for="1" id="input-note-1"><strong>Configuration.</strong> Validate the HTTP(S) base URL, configured languages and portable source paths.</span>
-          <span class="architecture-note" data-for="2" id="input-note-2"><strong>Content.</strong> Typed YAML, unique keys, matching translation IDs and one home page per language.</span>
-          <span class="architecture-note" data-for="3" id="input-note-3"><strong>Local files.</strong> Templates and optional assets/public trees admit no symlinks or special files.</span>
-          <span class="architecture-note" data-for="4" id="input-note-4"><strong>No guessing.</strong> No YAML includes, ignored content directories or fallback translations.</span>
-          <span class="architecture-note" data-for="5" id="input-note-5"><strong>Continue into preparation.</strong> Invalid templates, CSS and output collisions can still stop the build before installation.</span>
-          <span class="architecture-note" data-for="6" id="input-note-6"><strong>No replacement.</strong> A pre-install error leaves old output in place and attempts to remove only this invocation’s stage.</span>
+          <span class="architecture-caption-default">The command calls the library; the library coordinates the modules. Build order is in the next diagram.</span>
+          <span class="architecture-note" data-for="1" id="crate-note-1"><strong>Command line.</strong> Clap reads the arguments. Rust applications call the same library API.</span>
+          <span class="architecture-note" data-for="2" id="crate-note-2"><strong>Library.</strong> build() and build_with_options() return BuildSummary. lib.rs sequences the work, renders pages and combines errors.</span>
+          <span class="architecture-note" data-for="3" id="crate-note-3"><strong>Settings.</strong> Read strict TOML and combine profiles and overrides. Hook declarations are checked even in builds without hooks.</span>
+          <span class="architecture-note" data-for="4" id="crate-note-4"><strong>Content.</strong> Read localized YAML, pair translations by page ID and work out their routes.</span>
+          <span class="architecture-note" data-for="5" id="crate-note-5"><strong>Assets.</strong> Lightning CSS and Oxc process CSS/JavaScript; regression checks compare results. A digest names the final asset tree.</span>
+          <span class="architecture-note" data-for="6" id="crate-note-6"><strong>HTML.</strong> minify-html rewrites markup; a parsed-tree check can catch unintended changes. HTML minification is off by default.</span>
+          <span class="architecture-note" data-for="7" id="crate-note-7"><strong>Hooks.</strong> Requires Cargo's non-default hooks feature. A TOML setting cannot add missing code.</span>
+          <span class="architecture-note" data-for="8" id="crate-note-8"><strong>Files and recovery.</strong> Check paths, inventory files, write new output and recover interrupted replacements.</span>
         </figcaption>
       </figure>
+      <figure class="architecture-panel architecture-panel-dependencies" id="architecture-panel-dependencies" aria-labelledby="dependency-overview">
+        <dl class="architecture-dependencies">
+          <div class="architecture-dependency-group">
+            <dt>Required<span class="architecture-feature-state">Production crates</span></dt>
+            <dd><ul class="architecture-crates">
+              {% for dependency in site.cargo.dependencies %}
+              {% if dependency.section == "dependencies" and not dependency.optional %}
+              <li><a href="https://crates.io/crates/{{ dependency.package }}" title="{{ dependency.name }} {{ dependency.version }}"><code>{{ dependency.name }}</code></a></li>
+              {% endif %}
+              {% endfor %}
+            </ul></dd>
+          </div>
+          {% for feature, members in site.cargo.features %}
+          {% if feature != "default" %}
+          <div class="architecture-dependency-group" data-feature="{{ feature }}">
+            <dt><code>{{ feature }}</code><span class="architecture-feature-state">{% if feature in site.cargo.features.default %}Default feature{% else %}Opt-in feature{% endif %}</span></dt>
+            <dd>
+              {% if members %}
+              <ul class="architecture-crates">
+                {% for dependency in site.cargo.dependencies %}
+                {% set member = "dep:" ~ dependency.name %}
+                {% if dependency.section == "dependencies" and member in members %}
+                <li><a href="https://crates.io/crates/{{ dependency.package }}" title="{{ dependency.name }} {{ dependency.version }}"><code>{{ dependency.name }}</code></a></li>
+                {% endif %}
+                {% endfor %}
+              </ul>
+              {% else %}
+              <span class="architecture-dependency-note">No additional crates.</span>
+              {% endif %}
+              {% if feature == "hooks" %}<a class="architecture-dependency-note" id="software-node-hook-gate" href="#trusted-process-boundary">Runs commands with the standard library. Not a sandbox.</a>{% endif %}
+            </dd>
+          </div>
+          {% endif %}
+          {% endfor %}
+          <div class="architecture-dependency-group architecture-dependency-dev">
+            <dt>Development only<span class="architecture-feature-state">Not production dependencies</span></dt>
+            <dd><ul class="architecture-crates">
+              {% for dependency in site.cargo.dependencies %}
+              {% if dependency.section == "dev-dependencies" %}
+              <li><a href="https://crates.io/crates/{{ dependency.package }}" title="{{ dependency.name }} {{ dependency.version }}"><code>{{ dependency.name }}</code></a></li>
+              {% endif %}
+              {% endfor %}
+            </ul></dd>
+          </div>
+        </dl>
+        <figcaption>Direct crates and feature groups come from <a href="{{ site.repository_url }}/blob/main/Cargo.toml">Cargo.toml</a>; transitive dependencies are not shown. Compiling a minifier does not switch it on. <a id="software-node-features" href="#asset-pipeline">How engines are selected</a>.</figcaption>
+      </figure>
+    </div>
+  </fieldset>
+</section>
 
-      <figure class="architecture-panel architecture-panel-routes" id="architecture-panel-routes" aria-labelledby="architecture-routes-title">
-        <h3 id="architecture-routes-title">One identity. Two addresses.</h3>
-        <div class="architecture-pair-diagram">
-          <a class="architecture-pair-source architecture-inspect" data-node="1" href="#invariants-worth-knowing" aria-describedby="route-note-1"><strong>English</strong><code>about.yaml</code></a>
-          <a class="architecture-pair-source architecture-inspect" data-node="2" href="#invariants-worth-knowing" aria-describedby="route-note-2"><strong>German</strong><code>about.yaml</code></a>
-          <a class="architecture-identity architecture-inspect" data-node="3" href="#invariants-worth-knowing" aria-describedby="route-note-3"><strong>about</strong></a>
-          <a class="architecture-route-destination architecture-inspect" data-node="4" href="#hosting-paths-are-not-disk-paths" aria-describedby="route-note-4"><strong>/about/</strong></a>
-          <a class="architecture-route-destination architecture-inspect" data-node="5" href="#hosting-paths-are-not-disk-paths" aria-describedby="route-note-5"><strong>/de/ueber/</strong></a>
+<section class="architecture-explorer" aria-labelledby="build-overview">
+  <h2 id="build-overview">Build process</h2>
+  <p class="architecture-instruction">Check the settings, build beside the old site, then replace it. Each explorer keeps its own selection.</p>
+  <fieldset class="architecture-console architecture-process">
+    <legend class="architecture-legend">Choose a build process focus</legend>
+    <input class="architecture-choice" type="radio" name="process-view" id="architecture-view-all" value="overview" aria-controls="architecture-panel-all" checked>
+    <label class="architecture-tab" id="process-overview" for="architecture-view-all">Whole process</label>
+    <input class="architecture-choice" type="radio" name="process-view" id="architecture-view-stage" value="stage" aria-controls="architecture-panel-stage">
+    <label class="architecture-tab" id="rendered-output" for="architecture-view-stage">Prepare output</label>
+    <input class="architecture-choice" type="radio" name="process-view" id="architecture-view-replace" value="replacement" aria-controls="architecture-panel-replace">
+    <label class="architecture-tab" id="output-replacement" for="architecture-view-replace">Site replacement</label>
+    <div class="architecture-screen">
+      <figure class="architecture-panel architecture-panel-all" id="architecture-panel-all" aria-labelledby="process-overview">
+        <svg class="architecture-map architecture-map-wide" viewBox="0 0 860 530" role="group" aria-labelledby="architecture-map-title architecture-map-description">
+          <title id="architecture-map-title">Build ordering with separate success and failure post hooks</title>
+          <desc id="architecture-map-description">Resolve settings first; invalid configuration stops without running hooks. Follow the downward route through optional pre hooks, reading inputs, preparing the stage and installing output. Four separate dashed routes carry required pre-hook, input, render or check, and install or cleanup errors to failure and always post hooks. Selected regression checks run before installation; warn differences continue along the success route. Successful installation selects success and always post hooks. A post-hook error changes neither subsequent hook eligibility nor installed output.</desc>
+          <defs><marker id="architecture-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L7 4L0 8Z"/></marker><marker id="architecture-failure-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L7 4L0 8Z"/></marker><marker id="architecture-success-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L7 4L0 8Z"/></marker></defs>
+          <g class="architecture-wires" marker-end="url(#architecture-arrow)"><path d="M155 88V108"/><path d="M155 172V204"/><path d="M155 268V300"/><path d="M155 364V396"/></g>
+          <g class="architecture-wires architecture-wire-failure" marker-end="url(#architecture-failure-arrow)"><path d="M278 56H344"/><path d="M278 140H470V200H608"/><path d="M278 236H494V224H608"/><path d="M278 332H518V248H608"/><path d="M278 428H542V272H608"/></g>
+          <path class="architecture-wires architecture-wire-success" d="M155 460V506H724V474" marker-end="url(#architecture-success-arrow)"/>
+          <g class="architecture-route-labels"><text class="architecture-svg-note" x="360" y="60">Invalid settings: stop; no hooks</text><text class="architecture-svg-note" x="292" y="128">required failure</text><text class="architecture-svg-note" x="292" y="224">input error</text><text class="architecture-svg-note" x="292" y="320">render / check error</text><text class="architecture-svg-note" x="292" y="416">install / cleanup error</text></g>
+          <text class="architecture-svg-note architecture-success-label" x="292" y="492">Build succeeded</text>
+          <a class="architecture-inspect" id="process-node-resolve" data-node="1" href="#build-sequence" aria-describedby="process-note-1"><g class="architecture-svg-gate"><rect x="32" y="24" width="246" height="64"/><text x="155" y="51" text-anchor="middle">1. Resolve</text><text class="architecture-svg-port" x="155" y="75" text-anchor="middle">settings + features</text></g></a>
+          <a class="architecture-inspect" id="process-node-pre" data-node="2" href="#trusted-process-boundary" aria-describedby="process-note-2"><g class="architecture-svg-gate"><rect x="32" y="108" width="246" height="64"/><text x="155" y="135" text-anchor="middle">2. Pre hooks</text><text class="architecture-svg-port" x="155" y="159" text-anchor="middle">optional</text></g></a>
+          <a class="architecture-inspect" id="process-node-read" data-node="3" href="#invariants-worth-knowing" aria-describedby="process-note-3"><g class="architecture-svg-route"><rect x="32" y="204" width="246" height="64"/><text x="155" y="231" text-anchor="middle">3. Read / validate</text><text class="architecture-svg-port" x="155" y="255" text-anchor="middle">content + templates</text></g></a>
+          <a class="architecture-inspect" id="process-node-stage" data-node="4" href="#build-sequence" aria-describedby="process-note-4"><g class="architecture-svg-stage"><rect x="32" y="300" width="246" height="64"/><text x="155" y="327" text-anchor="middle">4. Prepare stage</text><text class="architecture-svg-port" x="155" y="351" text-anchor="middle">render + selected checks</text></g></a>
+          <a class="architecture-inspect" id="process-node-install" data-node="5" href="#output-ownership-and-interruption-recovery" aria-describedby="process-note-5"><g class="architecture-svg-output"><rect x="32" y="396" width="246" height="64"/><text x="155" y="423" text-anchor="middle">5. Install</text><text class="architecture-svg-port" x="155" y="447" text-anchor="middle">dist/ or review/</text></g></a>
+          <a class="architecture-inspect" id="process-node-post" data-node="6" href="#trusted-process-boundary" aria-describedby="process-note-6"><g class="architecture-svg-output"><rect x="608" y="398" width="232" height="76"/><text x="724" y="422" text-anchor="middle">Success post hooks</text><text class="architecture-svg-port" x="724" y="445" text-anchor="middle">when=success</text><text class="architecture-svg-port" x="724" y="465" text-anchor="middle">when=always</text></g></a>
+          <a class="architecture-inspect" id="process-node-post-failure" data-node="7" href="#trusted-process-boundary" aria-describedby="process-note-7"><g class="architecture-svg-gate architecture-svg-failure"><rect x="608" y="178" width="232" height="118"/><text x="724" y="215" text-anchor="middle">Failure post hooks</text><text class="architecture-svg-port" x="724" y="240" text-anchor="middle">when=failure</text><text class="architecture-svg-port" x="724" y="264" text-anchor="middle">when=always</text></g></a>
+        </svg>
+        <ol class="architecture-map-narrow architecture-process-list">
+          <li><a class="architecture-inspect" data-node="1" href="#build-sequence" aria-describedby="process-note-1"><strong>Resolve</strong><span>Settings + features</span></a></li>
+          <li><a class="architecture-inspect" data-node="2" href="#trusted-process-boundary" aria-describedby="process-note-2"><strong>Optional pre hooks</strong><span>Prepare source inputs</span></a></li>
+          <li><a class="architecture-inspect" data-node="3" href="#invariants-worth-knowing" aria-describedby="process-note-3"><strong>Read / validate</strong><span>Content, templates and public files</span></a></li>
+          <li><a class="architecture-inspect" data-node="4" href="#build-sequence" aria-describedby="process-note-4"><strong>Prepare stage</strong><span>Render + selected checks. Warn differences continue; enforced differences stop installation.</span></a></li>
+          <li><a class="architecture-inspect" data-node="5" href="#output-ownership-and-interruption-recovery" aria-describedby="process-note-5"><strong>Install</strong><span>dist/ or review/</span></a></li>
+        </ol>
+        <div class="architecture-map-narrow architecture-process-outcomes">
+          <a class="architecture-inspect architecture-outcome-success" data-node="6" href="#trusted-process-boundary" aria-describedby="process-note-6"><strong>Installed successfully → success post hooks</strong><code>when=success · when=always</code><span>Includes builds with regression warnings.</span></a>
+          <a class="architecture-inspect architecture-outcome-failure" data-node="7" href="#trusted-process-boundary" aria-describedby="process-note-7"><strong>Build error → failure post hooks</strong><code>when=failure · when=always</code><span>Required pre-hook, input, render, check or install/cleanup errors take this route.</span></a>
         </div>
         <figcaption class="architecture-readout">
-          <span class="architecture-caption-default">Match by page ID, not by slug. English is the default in this example.</span>
-          <span class="architecture-note" data-for="1" id="route-note-1"><strong>English source.</strong> en/pages/about.yaml declares slug: about.</span>
-          <span class="architecture-note" data-for="2" id="route-note-2"><strong>German source.</strong> de/pages/about.yaml declares slug: ueber. Missing this page stops the build.</span>
-          <span class="architecture-note" data-for="3" id="route-note-3"><strong>Shared identity.</strong> The path beneath pages/, without .yaml, pairs translations. Their words and slugs can differ.</span>
-          <span class="architecture-note" data-for="4" id="route-note-4"><strong>Default-language route.</strong> /about/ is written to dist/about/index.html.</span>
-          <span class="architecture-note" data-for="5" id="route-note-5"><strong>Localized route.</strong> /de/ueber/ is written to dist/de/ueber/index.html. A hosting prefix changes URLs, not these disk paths.</span>
+          <span class="architecture-caption-default">Configuration errors run no hooks. Otherwise, the build result selects success/always or failure/always post hooks. Post-hook errors keep that selection and leave installed output in place. Hooks require an opted-in executable and configured commands.</span>
+          <span class="architecture-note" data-for="1" id="process-note-1"><strong>Check first.</strong> Validate settings and requested features before running commands or touching output.</span>
+          <span class="architecture-note" data-for="2" id="process-note-2"><strong>Pre hooks.</strong> Run before reading content, templates or assets. A required failure skips later pre hooks and the build, then reaches matching post hooks.</span>
+          <span class="architecture-note" data-for="3" id="process-note-3"><strong>Read and validate.</strong> Pair translations, work out routes, load templates and inventory public files.</span>
+          <span class="architecture-note" data-for="4" id="process-note-4"><strong>Prepare output.</strong> Process assets, copy public files, render pages and write the sitemap and manifest. Selected checks run before installation; only enforced differences stop it. Input, minifier and I/O errors remain fatal.</span>
+          <span class="architecture-note" data-for="5" id="process-note-5"><strong>Install.</strong> --profile release --review keeps release settings and hooks but writes review/. Core replacement leaves dist/ alone; hooks can write elsewhere.</span>
+          <span class="architecture-note" data-for="6" id="process-note-6"><strong>Success post hooks.</strong> Successful installation selects when=success and when=always, including builds with regression warnings. A post-hook error neither changes later hook eligibility nor rolls back output.</span>
+          <span class="architecture-note" data-for="7" id="process-note-7"><strong>Failure post hooks.</strong> Required pre-hook or core errors select when=failure and when=always. Core errors include input, render, enforced regression checks and installation/cleanup. Later matching hooks remain eligible even if a post hook fails.</span>
         </figcaption>
       </figure>
-
-      <figure class="architecture-panel architecture-panel-stage" id="architecture-panel-stage" aria-labelledby="architecture-stage-title">
-        <h3 id="architecture-stage-title">All new bytes meet in the stage.</h3>
+      <figure class="architecture-panel architecture-panel-stage" id="architecture-panel-stage" aria-labelledby="rendered-output">
         <div class="architecture-stage-diagram">
           <div class="architecture-transform-lane">
-            <a class="architecture-inspect" data-node="1" href="#invariants-worth-knowing" aria-describedby="stage-note-1"><code>assets/</code></a>
-            <a class="architecture-inspect" data-node="2" href="#invariants-worth-knowing" aria-describedby="stage-note-2"><strong>Optimize + hash</strong></a>
+            <a class="architecture-inspect" data-node="1" href="#asset-pipeline" aria-describedby="stage-note-1"><code>assets/</code></a>
+            <a class="architecture-inspect" id="process-node-minify" data-node="2" href="#asset-pipeline" aria-describedby="stage-note-2"><strong>Optional minify + hash</strong></a>
             <a class="architecture-inspect" data-node="3" href="#invariants-worth-knowing" aria-describedby="stage-note-3"><code>assets/&lt;digest&gt;/</code></a>
           </div>
           <div class="architecture-transform-lane">
@@ -198,60 +170,42 @@
             <a class="architecture-inspect" data-node="6" href="#invariants-worth-knowing" aria-describedby="stage-note-6"><code>stable paths</code></a>
           </div>
           <div class="architecture-transform-lane">
-            <a class="architecture-inspect" data-node="7" href="#invariants-worth-knowing" aria-describedby="stage-note-7"><strong>Tera + content</strong></a>
-            <a class="architecture-inspect" data-node="8" href="#invariants-worth-knowing" aria-describedby="stage-note-8"><strong>Render + minify</strong></a>
-            <a class="architecture-inspect" data-node="9" href="#invariants-worth-knowing" aria-describedby="stage-note-9"><code>…/index.html</code></a>
+            <a class="architecture-inspect" data-node="7" href="#build-sequence" aria-describedby="stage-note-7"><strong>Tera + content</strong></a>
+            <a class="architecture-inspect" data-node="8" href="#asset-pipeline" aria-describedby="stage-note-8"><strong>Render; optional minify</strong></a>
+            <a class="architecture-inspect" data-node="9" href="#build-sequence" aria-describedby="stage-note-9"><code>…/index.html</code></a>
           </div>
-          <a class="architecture-seal architecture-inspect" data-node="10" href="#invariants-worth-knowing" aria-describedby="stage-note-10"><strong>Seal .regen-stage/</strong></a>
+          <a class="architecture-seal architecture-inspect" data-node="10" href="#build-sequence" aria-describedby="stage-note-10"><strong>Sitemap, then manifest</strong></a>
         </div>
         <figcaption class="architecture-readout">
-          <span class="architecture-caption-default">Three paths in. One complete output tree.</span>
-          <span class="architecture-note" data-for="1" id="stage-note-1"><strong>Asset inputs.</strong> Standalone CSS, JavaScript and media live in the same versioned tree.</span>
-          <span class="architecture-note" data-for="2" id="stage-note-2"><strong>Selective optimization.</strong> Minify standalone CSS only. Hash sorted paths, explicit lengths and final bytes.</span>
-          <span class="architecture-note" data-for="3" id="stage-note-3"><strong>One tree digest.</strong> Any changed asset invalidates the complete tree. Sibling paths survive.</span>
-          <span class="architecture-note" data-for="4" id="stage-note-4"><strong>Public inputs.</strong> Files that need stable, unhashed paths.</span>
-          <span class="architecture-note" data-for="5" id="stage-note-5"><strong>Byte-preserving copy.</strong> No transformation, optimization or sanitization.</span>
-          <span class="architecture-note" data-for="6" id="stage-note-6"><strong>Stable destinations.</strong> Public files retain their relative paths; collisions fail.</span>
-          <span class="architecture-note" data-for="7" id="stage-note-7"><strong>Local rendering.</strong> Templates receive localized content and URL context.</span>
-          <span class="architecture-note" data-for="8" id="stage-note-8"><strong>HTML preparation.</strong> Render Tera, then minify the resulting HTML document.</span>
-          <span class="architecture-note" data-for="9" id="stage-note-9"><strong>Page output.</strong> Comments are retained. Inline CSS/JavaScript are not separately minified; surrounding whitespace can change.</span>
-          <span class="architecture-note" data-for="10" id="stage-note-10"><strong>Write last.</strong> sitemap.xml, then regen-manifest.json: sorted hashes and byte counts, excluding the manifest itself.</span>
+          <span class="architecture-caption-default">New files and selected regression checks finish before the site is replaced. Hooks can change things outside this process.</span>
+          <span class="architecture-note" data-for="1" id="stage-note-1"><strong>Assets.</strong> CSS, JavaScript and media share one versioned tree.</span>
+          <span class="architecture-note" data-for="2" id="stage-note-2"><strong>Process and hash.</strong> Available engines and your settings choose the transforms. Hash sorted paths, explicit lengths and final bytes.</span>
+          <span class="architecture-note" data-for="3" id="stage-note-3"><strong>One digest.</strong> Change an asset and the whole tree gets a new URL. Relative paths stay the same.</span>
+          <span class="architecture-note" data-for="4" id="stage-note-4"><strong>Public files.</strong> Inputs that need stable, unhashed paths.</span>
+          <span class="architecture-note" data-for="5" id="stage-note-5"><strong>Copy as-is.</strong> No transformation or sanitization.</span>
+          <span class="architecture-note" data-for="6" id="stage-note-6"><strong>Keep paths.</strong> Preserve relative paths and reject collisions.</span>
+          <span class="architecture-note" data-for="7" id="stage-note-7"><strong>Render.</strong> Templates receive localized content, URLs and build settings.</span>
+          <span class="architecture-note" data-for="8" id="stage-note-8"><strong>HTML.</strong> Tera renders first. Minification is opt-in; follow the link for engine limits.</span>
+          <span class="architecture-note" data-for="9" id="stage-note-9"><strong>Pages.</strong> Routes become index.html files in staging, not in the live output.</span>
+          <span class="architecture-note" data-for="10" id="stage-note-10"><strong>Manifest.</strong> Record sorted hashes and byte counts, excluding the manifest itself. Post-hook changes are not rehashed.</span>
         </figcaption>
       </figure>
-
-      <figure class="architecture-panel architecture-panel-replace" id="architecture-panel-replace" aria-labelledby="architecture-replace-title">
-        <h3 id="architecture-replace-title">Follow the directories.</h3>
-        <table class="architecture-replacement-table" aria-label="Directory state after each step of replacing a recognized ReGen build">
+      <figure class="architecture-panel architecture-panel-replace" id="architecture-panel-replace" aria-labelledby="output-replacement">
+        <table class="architecture-replacement-table" aria-label="Replacing recognized ReGen output; review follows the same sequence instead of dist">
           <thead><tr><th scope="col">Step</th><th scope="col">Old build</th><th scope="col">New build</th></tr></thead>
           <tbody>
-            <tr>
-              <th scope="row"><a class="architecture-operation architecture-inspect" data-node="1" href="#output-ownership-and-interruption-recovery" aria-describedby="replace-note-1">1. Prepare</a></th>
-              <td><code>dist/</code></td>
-              <td><code>.regen-<wbr>stage/</code></td>
-            </tr>
-            <tr>
-              <th scope="row"><a class="architecture-operation architecture-inspect" data-node="2" href="#output-ownership-and-interruption-recovery" aria-describedby="replace-note-2">2. Rename old</a><span class="architecture-dist-gap">dist/ absent</span></th>
-              <td><code>.regen-<wbr>previous/</code></td>
-              <td><code>.regen-<wbr>stage/</code></td>
-            </tr>
-            <tr>
-              <th scope="row"><a class="architecture-operation architecture-inspect" data-node="3" href="#output-ownership-and-interruption-recovery" aria-describedby="replace-note-3">3. Promote stage</a></th>
-              <td><code>.regen-<wbr>previous/</code></td>
-              <td><code>dist/</code></td>
-            </tr>
-            <tr>
-              <th scope="row"><a class="architecture-operation architecture-inspect" data-node="4" href="#output-ownership-and-interruption-recovery" aria-describedby="replace-note-4">4. Remove old</a></th>
-              <td><span class="architecture-removed">Removed</span></td>
-              <td><code>dist/</code></td>
-            </tr>
+            <tr><th scope="row"><a class="architecture-operation architecture-inspect" data-node="1" href="#output-ownership-and-interruption-recovery" aria-describedby="replace-note-1">1. Prepare</a></th><td><code>dist/</code></td><td><code>.regen-<wbr>stage/</code></td></tr>
+            <tr><th scope="row"><a class="architecture-operation architecture-inspect" id="process-node-gap" data-node="2" href="#output-ownership-and-interruption-recovery" aria-describedby="replace-note-2">2. Rename old</a></th><td><code>.regen-<wbr>previous/</code></td><td><code>.regen-<wbr>stage/</code></td></tr>
+            <tr><th scope="row"><a class="architecture-operation architecture-inspect" data-node="3" href="#output-ownership-and-interruption-recovery" aria-describedby="replace-note-3">3. Promote stage</a></th><td><code>.regen-<wbr>previous/</code></td><td><code>dist/</code></td></tr>
+            <tr><th scope="row"><a class="architecture-operation architecture-inspect" data-node="4" href="#output-ownership-and-interruption-recovery" aria-describedby="replace-note-4">4. Remove old</a></th><td><span class="architecture-removed">Removed</span></td><td><code>dist/</code></td></tr>
           </tbody>
         </table>
         <figcaption class="architecture-readout">
-          <span class="architecture-caption-default">Two renames. An explicit gap. Recovery stays inspectable.</span>
-          <span class="architecture-note" data-for="1" id="replace-note-1"><strong>Prepare.</strong> Old dist/ remains untouched while the new site is built in its sibling stage.</span>
-          <span class="architecture-note" data-for="2" id="replace-note-2"><strong>Move old output aside.</strong> Rename dist/ to .regen-previous/. Until promotion, dist/ is absent — not an atomic exchange.</span>
-          <span class="architecture-note" data-for="3" id="replace-note-3"><strong>Promote.</strong> Rename the completed stage to dist/. If promotion fails, attempt to restore the old tree.</span>
-          <span class="architecture-note" data-for="4" id="replace-note-4"><strong>Clean up.</strong> Remove the backup only after promotion. Cleanup failure means the new site may already be installed; inspect recovery state.</span>
+          <span class="architecture-caption-default">Two renames, not an atomic swap. Review uses review/ instead of dist/ and shares the same recovery paths. Cleanup or post-hook errors can occur after installation.</span>
+          <span class="architecture-note" data-for="1" id="replace-note-1"><strong>Prepare.</strong> Build errors before installation leave old output in place; staging cleanup is attempted. Hook changes are not rolled back.</span>
+          <span class="architecture-note" data-for="2" id="replace-note-2"><strong>Move old output.</strong> Rename it to .regen-previous/. Output is briefly absent; this is not zero-downtime publication.</span>
+          <span class="architecture-note" data-for="3" id="replace-note-3"><strong>Install new output.</strong> Rename the finished stage into place. If that fails, try to restore the old tree.</span>
+          <span class="architecture-note" data-for="4" id="replace-note-4"><strong>Clean up.</strong> Remove the backup. A cleanup error can leave the new site installed and recovery files needing inspection.</span>
         </figcaption>
       </figure>
     </div>

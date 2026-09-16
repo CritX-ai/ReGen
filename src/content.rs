@@ -29,9 +29,8 @@ pub(crate) struct Localized {
     pub pages: BTreeMap<String, Page>,
 }
 
-/// Strict page metadata with an explicit extension point for template-specific data.
-#[derive(Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
+/// Resolved page metadata with an explicit extension point for template-specific data.
+#[derive(Serialize)]
 pub(crate) struct Page {
     /// Localized page title, also used in navigation.
     pub title: String,
@@ -39,10 +38,9 @@ pub(crate) struct Page {
     pub description: String,
     /// Portable `.html` path relative to `templates/`.
     pub template: String,
-    /// Localized route suffix; the empty string denotes the locale homepage.
+    /// Resolved route suffix; only an explicitly empty slug denotes the locale homepage.
     pub slug: String,
     /// Free-form template values without weakening the page metadata schema.
-    #[serde(default)]
     pub data: BTreeMap<String, Value>,
 }
 
@@ -100,7 +98,7 @@ impl Content {
                 .expect("content_files validates the locale layout");
             let id = page_id(page_path)
                 .with_context(|| format!("invalid content file {}", path.display()))?;
-            let page: Page = read_yaml(path)?;
+            let page = read_page(path, &id)?;
             validate_page(&page).with_context(|| format!("invalid page {}", path.display()))?;
 
             if code == config.site.default_language
@@ -273,6 +271,44 @@ fn page_id(path: &Path) -> Result<String> {
     id.truncate(id.len() - ".yaml".len());
     portable_path(&id).context("page ID must be a portable relative path")?;
     Ok(id)
+}
+
+/// Deserialize authored metadata separately so only an omitted slug uses the filename.
+fn read_page(path: &Path, id: &str) -> Result<Page> {
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct PageSource {
+        title: String,
+        description: String,
+        template: String,
+        #[serde(default, deserialize_with = "deserialize_slug")]
+        slug: Option<String>,
+        #[serde(default)]
+        data: BTreeMap<String, Value>,
+    }
+
+    // Deserializing a present value as String keeps YAML null invalid; Option's
+    // usual deserializer would incorrectly treat null as an omitted field.
+    fn deserialize_slug<'de, D>(deserializer: D) -> std::result::Result<Option<String>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        String::deserialize(deserializer).map(Some)
+    }
+
+    let source: PageSource = read_yaml(path)?;
+    Ok(Page {
+        title: source.title,
+        description: source.description,
+        template: source.template,
+        slug: source.slug.unwrap_or_else(|| {
+            id.rsplit('/')
+                .next()
+                .expect("validated page IDs contain a basename")
+                .to_owned()
+        }),
+        data: source.data,
+    })
 }
 
 fn validate_page(page: &Page) -> Result<()> {

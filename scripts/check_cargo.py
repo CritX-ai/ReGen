@@ -17,7 +17,7 @@ TOOLCHAIN = "1.98.1"
 GENERATED = {"Cargo.toml.orig", ".cargo_vcs_info.json"}
 FORBIDDEN = {
     ".cargo", ".git", ".github", ".regen-stage", ".regen-previous",
-    "__pycache__", "dist", "node_modules", "private", "release-artifacts",
+    "__pycache__", "dist", "review", "node_modules", "private", "release-artifacts",
     "target", "website-data", "website_data",
 }
 

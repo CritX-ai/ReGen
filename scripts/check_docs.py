@@ -22,10 +22,11 @@ POEM_ROUTES = {
     "guide/poem/de/index.html": ("de", {"en": "guide/poem/", "de": "guide/poem/de/"}),
 }
 POEM_HOSTS = {"index.html"}
-# Release and CI coverage badges are live; all other documentation resources stay local.
+# Only the explicitly listed homepage badges may load external resources.
 LIVE_BADGES = {
     "https://img.shields.io/github/v/release/CritX-ai/ReGen?label=GitHub&style=flat-square",
     "https://img.shields.io/crates/v/regen-ssg?label=crates.io&style=flat-square",
+    "https://img.shields.io/badge/GHCR-container-blue?logo=github&style=flat-square",
     "https://img.shields.io/endpoint?url=https%3A%2F%2Fregen.critx.ai%2Fcoverage.json&style=flat-square",
 }
 VOID_ELEMENTS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
@@ -264,7 +265,8 @@ class Site:
             expected = {path[len(prefix):]: digest for path, digest in self.files.items()
                         if path.startswith(prefix) and path != name}
             manifest = json.loads((self.root / name).read_text(encoding="utf-8"))
-            require(manifest == {"format": 1, "generator": "ReGen", "version": version, "files": expected},
+            require(manifest == {"format": 1, "generator": "ReGen", "version": version,
+                                 "profile": "release", "review": False, "files": expected},
                     f"manifest metadata, complete inventory or byte hashes differ: {name}")
 
     def check_resources(self):

@@ -102,7 +102,7 @@ fn output_paths_cannot_escape_the_destination_or_truncate_existing_files() {
 #[test]
 fn a_lost_stage_cannot_install_an_incomplete_first_build() {
     let temp = tempdir();
-    let transaction = Transaction::begin(temp.path()).unwrap();
+    let transaction = Transaction::begin(temp.path(), "dist").unwrap();
     fs::remove_dir(transaction.stage()).unwrap();
     assert!(transaction.commit().is_err());
     assert!(!temp.path().join("dist").exists());
@@ -115,7 +115,7 @@ fn failed_promotion_restores_the_previous_site() {
     let temp = tempdir();
     owned_output(temp.path());
     let manifest = fs::read(temp.path().join("dist/regen-manifest.json")).unwrap();
-    let transaction = Transaction::begin(temp.path()).unwrap();
+    let transaction = Transaction::begin(temp.path(), "dist").unwrap();
     fs::write(transaction.stage().join("new.txt"), "incomplete").unwrap();
     fs::remove_dir_all(transaction.stage()).unwrap();
 
@@ -137,7 +137,7 @@ fn failed_promotion_restores_the_previous_site() {
 fn successful_replacement_removes_stale_output_and_only_its_own_recovery_state() {
     let temp = tempdir();
     // Install real owned output first: no backup exists until a later replacement.
-    let first = Transaction::begin(temp.path()).unwrap();
+    let first = Transaction::begin(temp.path(), "dist").unwrap();
     super::write_output(
         first.stage(),
         "regen-manifest.json",
@@ -153,7 +153,7 @@ fn successful_replacement_removes_stale_output_and_only_its_own_recovery_state()
     assert!(!temp.path().join(".regen-previous").exists());
     assert!(!temp.path().join(".regen-stage").exists());
     fs::write(temp.path().join("source.txt"), b"source remains").unwrap();
-    let transaction = Transaction::begin(temp.path()).unwrap();
+    let transaction = Transaction::begin(temp.path(), "dist").unwrap();
     super::write_output(transaction.stage(), "nested/new.txt", b"complete new site").unwrap();
     let output = transaction.commit().unwrap();
 
@@ -176,7 +176,7 @@ fn successful_replacement_removes_stale_output_and_only_its_own_recovery_state()
 fn a_backup_appearing_before_commit_is_preserved_for_manual_recovery() {
     let temp = tempdir();
     owned_output(temp.path());
-    let transaction = Transaction::begin(temp.path()).unwrap();
+    let transaction = Transaction::begin(temp.path(), "dist").unwrap();
     fs::write(transaction.stage().join("new.txt"), "new site").unwrap();
     fs::create_dir(temp.path().join(".regen-previous")).unwrap();
     fs::write(
@@ -202,7 +202,7 @@ fn a_backup_appearing_before_commit_is_preserved_for_manual_recovery() {
 fn failed_backup_cleanup_keeps_the_installed_site_and_recoverable_backup() {
     let temp = tempdir();
     owned_output(temp.path());
-    let transaction = Transaction::begin(temp.path()).unwrap();
+    let transaction = Transaction::begin(temp.path(), "dist").unwrap();
     fs::write(transaction.stage().join("new.txt"), "new site").unwrap();
     // A directory replaced by a file after admission can be renamed aside,
     // but must not be silently deleted by directory-only backup cleanup.
@@ -244,7 +244,7 @@ fn commit_rechecks_output_and_backup_symlinks_before_promotion() {
         let temp = tempdir();
         let outside = tempdir();
         fs::write(outside.path().join("keep.txt"), "external").unwrap();
-        let transaction = Transaction::begin(temp.path()).unwrap();
+        let transaction = Transaction::begin(temp.path(), "dist").unwrap();
         fs::write(transaction.stage().join("new.txt"), "new site").unwrap();
         symlink(outside.path(), temp.path().join(name)).unwrap();
 
@@ -300,7 +300,7 @@ fn failed_rollback_preserves_both_the_recovery_copy_and_intervening_output() {
     // A nonempty intervening directory blocks rollback without a scheduler race.
     let temp = tempdir();
     owned_output(temp.path());
-    let mut transaction = Transaction::begin(temp.path()).unwrap();
+    let mut transaction = Transaction::begin(temp.path(), "dist").unwrap();
     let manifest = fs::read(transaction.output.join("regen-manifest.json")).unwrap();
     fs::rename(&transaction.output, &transaction.previous).unwrap();
     fs::remove_dir(transaction.stage()).unwrap();
@@ -411,7 +411,7 @@ fn inventories_reject_symlink_descendants_even_when_the_target_is_a_regular_file
 fn denied_stage_cleanup_leaves_recoverable_files_without_touching_the_previous_site() {
     let temp = tempdir();
     owned_output(temp.path());
-    let transaction = Transaction::begin(temp.path()).unwrap();
+    let transaction = Transaction::begin(temp.path(), "dist").unwrap();
     let stage = transaction.stage().to_path_buf();
     fs::write(stage.join("unfinished.txt"), "recoverable").unwrap();
     with_mode(&stage, 0o555, || {
@@ -522,7 +522,7 @@ fn denied_output_directory_creation_does_not_create_a_partial_destination() {
 fn denied_backup_rename_preserves_the_live_site_and_does_not_promote_the_stage() {
     let temp = tempdir();
     owned_output(temp.path());
-    let transaction = Transaction::begin(temp.path()).unwrap();
+    let transaction = Transaction::begin(temp.path(), "dist").unwrap();
     fs::write(transaction.stage().join("new.txt"), "new site").unwrap();
     with_mode(temp.path(), 0o555, || {
         let denied = fs::File::create(temp.path().join("permission-probe")).is_err();

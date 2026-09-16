@@ -217,8 +217,8 @@ impl Transaction {
     ///
     /// Ownership is a recognized manifest marker, not an integrity or authenticity
     /// check. Existing recovery directories require a human decision before reuse.
-    pub(crate) fn begin(root: &Path) -> Result<Self> {
-        let output = root.join("dist");
+    pub(crate) fn begin(root: &Path, output_name: &str) -> Result<Self> {
+        let output = root.join(output_name);
         let stage = root.join(".regen-stage");
         let previous = root.join(".regen-previous");
         let has_output = reject_symlinks(&output)?.is_some();
@@ -240,10 +240,10 @@ impl Transaction {
             // Stream past the file inventory; large sites must not need a second
             // in-memory copy of their generated manifest just to establish ownership.
             let marker: OutputMarker = serde_json::from_reader(BufReader::new(File::open(&marker_path)
-                .context("refusing to replace dist without a ReGen manifest; choose a dedicated site directory")?))?;
+                .context("refusing to replace output without a ReGen manifest; choose a dedicated site directory")?))?;
             ensure!(
                 marker.generator == "ReGen" && marker.format == 1,
-                "refusing to replace dist without a recognized ReGen manifest"
+                "refusing to replace output without a recognized ReGen manifest"
             );
         }
         Ok(transaction)
@@ -265,7 +265,8 @@ impl Transaction {
             ".regen-previous appeared during generation; output not replaced"
         );
         if has_output {
-            fs::rename(&self.output, &self.previous).context("cannot move previous dist aside")?;
+            fs::rename(&self.output, &self.previous)
+                .context("cannot move previous output aside")?;
         }
         self.promote(has_output)?;
         // Only remove the backup this invocation actually created.

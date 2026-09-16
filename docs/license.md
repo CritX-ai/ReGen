@@ -12,9 +12,20 @@ Rust dependencies retain their own licenses. Native ReGen executables incorporat
 
 Cargo source packages obtain dependencies separately. Generated HTML does not acquire the generator's dependency licenses merely because ReGen produced it. Assets included in a generated site still retain their own terms.
 
+### Dependency notice provenance
+
+Third-party terms remain intact. [Notice provenance](../licenses/supplemental.json) records retained upstream sources and the four known notice-source gaps; inventories expose them as `notice_source_gap`.
+Some upstream sources omit original license or copyright files. Retained declarations and best-effort notice collection do not resolve these gaps or certify legal compliance:
+
+- [`escape-simd 0.1.0`](https://crates.io/crates/escape-simd/0.1.0) and [`json-escape-simd 3.1.2`](https://crates.io/crates/json-escape-simd/3.1.2) declare MIT but omit complete upstream notices. Their JSON kernel is attributed to Apache-2.0-licensed [`sonic-rs v0.5.5`](https://github.com/cloudwego/sonic-rs/tree/v0.5.5); the supplemental record identifies the exact source and license, which are not included in those packages' retained notices.
+- [`parcel_sourcemap 2.1.1`](https://crates.io/crates/parcel_sourcemap/2.1.1) declares MIT but provides no complete upstream license/copyright notice in the inspected source.
+- [`seahash 4.1.0`](https://crates.io/crates/seahash/4.1.0) declares MIT; its immediate upstream successor adds MIT terms but still no copyright line.
+
+The original declarations, available attribution, separate standard terms and unresolved provenance records remain available for downstream review.
+
 ## Fonts
 
-The bundled **Space Grotesk**, **IBM Plex Sans** and **IBM Plex Mono** font files are licensed under the **SIL Open Font License 1.1**, not WTFPL.
+The bundled **[Space Grotesk](https://github.com/floriankarsten/space-grotesk)**, **[IBM Plex Sans and Mono](https://github.com/IBM/plex)** font files are licensed under the **SIL Open Font License 1.1**, not WTFPL.
 
 - [Space Grotesk copyright notice and OFL](../site/assets/fonts/space-grotesk-ofl.txt)
 - [IBM Plex copyright notice and OFL](../site/assets/fonts/ibm-plex-ofl.txt)

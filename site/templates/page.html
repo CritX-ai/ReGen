@@ -52,12 +52,8 @@
         <h2 class="nav-title">On this page</h2>
         {% if page.slug == "architecture" %}
         <ul class="toc diagram-toc">
-          <li><a href="#build-overview">Build overview</a></li>
-          <li><a href="#crate-map">Crate composition</a></li>
-          <li><a href="#input-gate">Validate inputs</a></li>
-          <li><a href="#translation-routes">Pair translations</a></li>
-          <li><a href="#rendered-output">Prepare output</a></li>
-          <li><a href="#output-replacement">Replace output</a></li>
+          <li><a href="#software-architecture">Software architecture</a></li>
+          <li><a href="#build-overview">Build process</a></li>
         </ul>
         {% endif %}
         <ul class="toc">
@@ -120,6 +116,7 @@
           <p class="release-badges">
             <a href="https://github.com/CritX-ai/ReGen/releases/latest"><img src="https://img.shields.io/github/v/release/CritX-ai/ReGen?label=GitHub&amp;style=flat-square" alt="GitHub release" height="20"></a>
             <a href="https://crates.io/crates/regen-ssg"><img src="https://img.shields.io/crates/v/regen-ssg?label=crates.io&amp;style=flat-square" alt="crates.io release" height="20"></a>
+            <a href="https://github.com/orgs/CritX-ai/packages/container/package/regen-ssg"><img src="https://img.shields.io/badge/GHCR-container-blue?logo=github&amp;style=flat-square" alt="GHCR container image" height="20"></a>
             <a href="https://github.com/CritX-ai/ReGen/actions/workflows/build.yml?query=branch%3Amain"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fregen.critx.ai%2Fcoverage.json&amp;style=flat-square" alt="Rust line coverage from verified main CI" height="20"></a>
           </p>
           {% endif %}
@@ -130,12 +127,8 @@
           <nav aria-label="On this page">
             {% if page.slug == "architecture" %}
             <ul class="toc diagram-toc">
-              <li><a href="#build-overview">Build overview</a></li>
-              <li><a href="#crate-map">Crate composition</a></li>
-              <li><a href="#input-gate">Validate inputs</a></li>
-              <li><a href="#translation-routes">Pair translations</a></li>
-              <li><a href="#rendered-output">Prepare output</a></li>
-              <li><a href="#output-replacement">Replace output</a></li>
+              <li><a href="#software-architecture">Software architecture</a></li>
+              <li><a href="#build-overview">Build process</a></li>
             </ul>
             {% endif %}
             <ul class="toc">
@@ -161,7 +154,7 @@
   </div>
 
   <footer class="site-footer">
-    <p>Built with ReGen</p>
+    <p>Built with ReGen, by <a href="https://critx.net">CritX</a></p>
   </footer>
 </body>
 </html>

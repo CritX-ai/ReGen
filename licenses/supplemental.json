@@ -709,6 +709,32 @@
       "license_basis": "upstream-declaration-with-standard-terms"
     },
     {
+      "name": "selectors",
+      "version": "0.38.0",
+      "vcs_commit": "572ecba2d1600e7c3d490586692a209faf703baa",
+      "files": [
+        {
+          "path": "licenses/supplemental/non-oxc/selectors-572ecba2d160/SOURCE-NOTICE.txt",
+          "sha256": "d54c6e13e9e952dac17d209171df8657e3cae93beaddace4906150cdec8d02e9",
+          "source_url": "https://raw.githubusercontent.com/servo/stylo/572ecba2d1600e7c3d490586692a209faf703baa/selectors/lib.rs",
+          "kind": "source-attribution"
+        },
+        {
+          "path": "licenses/supplemental/non-oxc/selectors-572ecba2d160/DECLARATION.txt",
+          "sha256": "26a19ba53c3dfff3f572e04f72ed224dca7b03a76a8e0593fc48b458ec6ab535",
+          "source_url": "https://raw.githubusercontent.com/servo/stylo/572ecba2d1600e7c3d490586692a209faf703baa/selectors/Cargo.toml",
+          "kind": "license-declaration"
+        },
+        {
+          "path": "licenses/supplemental/non-oxc/selectors-572ecba2d160/LICENSE",
+          "sha256": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04",
+          "source_url": "https://raw.githubusercontent.com/mozilla/bedrock/a15178c3c7c976c67b3641af77cae0b66093a175/media/MPL/2.0/index.txt",
+          "kind": "license-text"
+        }
+      ],
+      "license_basis": "original-upstream-text"
+    },
+    {
       "name": "simd-abstraction",
       "version": "0.7.1",
       "vcs_commit": "f3381a842a6b86f4eafd5ac587f8081cd7e9bb2f",

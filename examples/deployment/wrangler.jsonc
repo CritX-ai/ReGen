@@ -1,0 +1,11 @@
+{
+  // Copy beside regen.toml; choose an unused Worker name in your account.
+  "name": "regen-static-site",
+  "compatibility_date": "2026-09-03",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "force-trailing-slash",
+    "not_found_handling": "none"
+  }
+}

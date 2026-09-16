@@ -81,6 +81,203 @@ fn assert_rejected_without_replacement(root: &Path, previous: &BTreeMap<PathBuf,
     assert!(!root.join(".regen-previous").exists());
 }
 
+#[cfg(not(feature = "hooks"))]
+#[test]
+fn unavailable_hooks_fail_before_commands_or_output_changes_and_can_be_cleared() {
+    let site = fixture();
+    let child_site = fixture();
+    let config_path = site.path().join("regen.toml");
+    let original = fs::read_to_string(&config_path).unwrap();
+    let command = serde_json::to_string(&[
+        env!("CARGO_BIN_EXE_regen"),
+        "build",
+        "--site",
+        child_site.path().to_str().unwrap(),
+    ])
+    .unwrap();
+    regen::build(site.path()).unwrap();
+    let previous = snapshot(&site.path().join("dist"));
+    for phase in ["pre", "post"] {
+        fs::write(
+            &config_path,
+            format!(
+                "{original}\n[profiles.hooked.hooks]\n{phase} = [{{ command = {command} }}]\n\
+                 [profiles.cleared]\nextends = 'hooked'\n[profiles.cleared.hooks]\n{phase} = []\n"
+            ),
+        )
+        .unwrap();
+        // A valid but unselected profile must not require its execution capability.
+        regen::build(site.path()).unwrap();
+        let error = regen::build_with_options(
+            site.path(),
+            &regen::BuildOptions {
+                profile: Some("hooked"),
+                review: true,
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert!(format!("{error:#}").contains("--features hooks"));
+        assert_eq!(previous, snapshot(&site.path().join("dist")));
+        assert!(!site.path().join("review").exists());
+        assert!(!site.path().join(".regen-stage").exists());
+        assert!(!site.path().join(".regen-previous").exists());
+        assert!(!child_site.path().join("dist").exists());
+        let cleared = regen::build_with_options(
+            site.path(),
+            &regen::BuildOptions {
+                profile: Some("cleared"),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(cleared.pages, 4);
+        assert!(!child_site.path().join("dist").exists());
+        // Restore the default-profile manifest before comparing the next failure.
+        regen::build(site.path()).unwrap();
+    }
+}
+
+#[test]
+fn release_compacts_css_but_html_and_javascript_require_explicit_opt_in() {
+    let site = fixture();
+    let source = concat!(
+        "<!DOCTYPE html><html><head><title>{{ build.profile }}</title></head><body>",
+        "<!-- application-marker --><div><a href='/one'>One</a> \n ",
+        "<a href='/two'>Two</a></div><pre>  keep\n    indentation  </pre>",
+        "<script> const text = '  keep  '; </script></body></html>",
+    );
+    let authored = [
+        (
+            "site.css",
+            ".kept { color: red; }\n",
+            cfg!(feature = "minify-css"),
+        ),
+        // Valid module input that script parsing would instead split at the newline.
+        (
+            "ambiguous.js",
+            "await\nPromise.resolve(42);\n",
+            cfg!(feature = "minify-js"),
+        ),
+        (
+            "module.mjs",
+            "export const response = await Promise.resolve(42);\n",
+            cfg!(feature = "minify-js"),
+        ),
+    ];
+    fs::write(site.path().join("templates/page.html"), source).unwrap();
+    for (name, bytes, _) in authored {
+        fs::write(site.path().join("assets").join(name), bytes).unwrap();
+    }
+    for (profile, destination) in [("release", "dist"), ("dev", "review")] {
+        regen::build_with_options(
+            site.path(),
+            &regen::BuildOptions {
+                profile: Some(profile),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let output = site.path().join(destination);
+        assert_eq!(
+            fs::read_to_string(output.join("index.html")).unwrap(),
+            source.replace("{{ build.profile }}", profile)
+        );
+        let assets = snapshot(&output.join("assets"));
+        for (name, bytes, enabled) in authored {
+            let emitted = assets
+                .iter()
+                .find(|(path, _)| path.ends_with(name))
+                .unwrap()
+                .1;
+            if profile == "release" && name.ends_with(".css") && enabled {
+                assert_ne!(emitted, bytes.as_bytes(), "{profile}: {name}");
+            } else {
+                assert_eq!(emitted, bytes.as_bytes(), "{profile}: {name}");
+            }
+        }
+    }
+
+    let config_path = site.path().join("regen.toml");
+    let config = fs::read_to_string(&config_path).unwrap();
+    fs::write(
+        config_path,
+        format!(
+            "{config}\n[build.minify.html_options]\nremove_comments = true\n\
+             [build.minify.js_options]\nsource_type = \"module\"\n"
+        ),
+    )
+    .unwrap();
+    for (profile, destination) in [("release", "dist"), ("dev", "review")] {
+        // Asset permission and fine-grained options do not opt HTML/JS into processing.
+        regen::build_with_options(
+            site.path(),
+            &regen::BuildOptions {
+                profile: Some(profile),
+                minify_assets: Some(true),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let output = site.path().join(destination);
+        let html = output.join("index.html");
+        let rendered = source.replace("{{ build.profile }}", profile);
+        assert_eq!(fs::read_to_string(&html).unwrap(), rendered);
+        let untouched = snapshot(&output.join("assets"));
+        for (name, bytes, enabled) in authored {
+            let emitted = untouched
+                .iter()
+                .find(|(path, _)| path.ends_with(name))
+                .unwrap()
+                .1;
+            if profile == "release" && name.ends_with(".css") && enabled {
+                assert_ne!(emitted, bytes.as_bytes(), "{profile}: {name}");
+            } else {
+                assert_eq!(emitted, bytes.as_bytes(), "{profile}: {name}");
+            }
+        }
+
+        regen::build_with_options(
+            site.path(),
+            &regen::BuildOptions {
+                profile: Some(profile),
+                minify_assets: Some(true),
+                minify_html: Some(cfg!(feature = "minify-html")),
+                minify_css: Some(cfg!(feature = "minify-css")),
+                minify_js: Some(cfg!(feature = "minify-js")),
+                regression_checks: Some(regen::RegressionCheckMode::Off),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let optimized = fs::read_to_string(html).unwrap();
+        if cfg!(feature = "minify-html") {
+            assert!(!optimized.contains("application-marker"));
+            assert!(optimized.contains("<pre>  keep\n    indentation  </pre>"));
+            assert!(optimized.contains("const text = '  keep  ';"));
+        } else {
+            assert_eq!(optimized, rendered);
+        }
+        let assets = snapshot(&output.join("assets"));
+        for (name, bytes, enabled) in authored {
+            let emitted = assets
+                .iter()
+                .find(|(path, _)| path.ends_with(name))
+                .unwrap()
+                .1;
+            if enabled {
+                assert_ne!(emitted, bytes.as_bytes(), "{profile}: {name}");
+                if name == "ambiguous.js" {
+                    let javascript = std::str::from_utf8(emitted).unwrap();
+                    assert!(javascript.contains("await Promise.resolve(42)"));
+                }
+            } else {
+                assert_eq!(emitted, bytes.as_bytes(), "{profile}: {name}");
+            }
+        }
+    }
+}
+
 #[test]
 fn cli_builds_from_default_and_explicit_sites_and_preserves_output_on_failure() {
     let site = fixture();
@@ -197,8 +394,20 @@ fn invalid_language_configuration_preserves_the_previous_site() {
 
 #[test]
 fn nested_translation_ids_must_match_even_when_page_counts_match() {
-    // Source paths pair translations; moving both sources must not change their URLs.
+    // Nested source paths pair translations; only the basename supplies an omitted slug.
     let site = fixture();
+    replace(
+        site.path(),
+        "content/en/pages/about.yaml",
+        "slug: about\n",
+        "",
+    );
+    replace(
+        site.path(),
+        "templates/page.html",
+        "<h1>{{ page.title }}</h1>",
+        "<h1>{{ page.title }}</h1><span data-slug=\"{{ page.slug }}\"></span>",
+    );
     for language in ["en", "de"] {
         let pages = site.path().join("content").join(language).join("pages");
         fs::create_dir(pages.join("guide")).unwrap();
@@ -209,6 +418,13 @@ fn nested_translation_ids_must_match_even_when_page_counts_match() {
     assert!(output.join("about/index.html").is_file());
     assert!(output.join("de/ueber/index.html").is_file());
     assert!(!output.join("guide").exists());
+    let english = fs::read_to_string(output.join("about/index.html")).unwrap();
+    assert!(english.contains("<span data-slug=\"about\"></span>"));
+    assert!(english.contains("rel=\"canonical\" href=\"https://example.com/about/\""));
+    assert!(english.contains("hreflang=\"de\" href=\"https://example.com/de/ueber/\""));
+    let german = fs::read_to_string(output.join("de/ueber/index.html")).unwrap();
+    assert!(german.contains("<span data-slug=\"ueber\"></span>"));
+    assert!(german.contains("hreflang=\"en\" href=\"https://example.com/about/\""));
     let first = snapshot(&output);
     let translated = site.path().join("content/de/pages/guide");
     fs::rename(translated.join("about.yaml"), translated.join("other.yaml")).unwrap();
@@ -224,6 +440,73 @@ fn nested_translation_ids_must_match_even_when_page_counts_match() {
     );
     assert!(regen::build(site.path()).is_err());
     assert_eq!(first, snapshot(&output));
+}
+
+#[test]
+fn omitted_index_slug_is_not_a_homepage_when_an_explicit_homepage_exists() {
+    let site = fixture();
+    for language in ["en", "de"] {
+        let pages = site.path().join("content").join(language).join("pages");
+        fs::rename(pages.join("index.yaml"), pages.join("home.yaml")).unwrap();
+        let homepage = fs::read_to_string(pages.join("home.yaml")).unwrap();
+        fs::write(
+            pages.join("index.yaml"),
+            homepage.replace("slug: \"\"\n", ""),
+        )
+        .unwrap();
+    }
+    fs::write(
+        site.path().join("templates/page.html"),
+        "<main data-slug=\"{{ page.slug }}\">{{ current_path }}</main>",
+    )
+    .unwrap();
+    regen::build(site.path()).unwrap();
+    let output = site.path().join("dist");
+    for (file, slug, route) in [
+        ("index.html", "", "/"),
+        ("index/index.html", "index", "/index/"),
+        ("de/index.html", "", "/de/"),
+        ("de/index/index.html", "index", "/de/index/"),
+    ] {
+        assert_eq!(
+            fs::read_to_string(output.join(file)).unwrap(),
+            format!("<main data-slug=\"{slug}\">{route}</main>")
+        );
+    }
+}
+
+#[test]
+fn omitted_slug_collisions_and_reserved_routes_preserve_the_installed_site() {
+    let site = fixture();
+    regen::build(site.path()).unwrap();
+    let previous = snapshot(&site.path().join("dist"));
+    for language in ["en", "de"] {
+        fs::create_dir(
+            site.path()
+                .join("content")
+                .join(language)
+                .join("pages/nested"),
+        )
+        .unwrap();
+    }
+    for name in ["nested/about.yaml", "assets.yaml"] {
+        for language in ["en", "de"] {
+            let pages = site.path().join("content").join(language).join("pages");
+            let source = fs::read_to_string(pages.join("index.yaml")).unwrap();
+            fs::write(pages.join(name), source.replace("slug: \"\"\n", "")).unwrap();
+        }
+        assert_rejected_without_replacement(site.path(), &previous);
+        for language in ["en", "de"] {
+            fs::remove_file(
+                site.path()
+                    .join("content")
+                    .join(language)
+                    .join("pages")
+                    .join(name),
+            )
+            .unwrap();
+        }
+    }
 }
 
 #[test]
@@ -255,8 +538,23 @@ fn missing_optional_asset_trees_build_and_invalid_css_preserves_that_build() {
 
     fs::create_dir(site.path().join("assets")).unwrap();
     fs::write(site.path().join("assets/broken.css"), "}").unwrap();
-    assert!(regen::build(site.path()).is_err());
-    assert_eq!(first, snapshot(&output));
+    if cfg!(feature = "minify-css") {
+        let path = site.path().join("regen.toml");
+        let config = fs::read_to_string(&path).unwrap();
+        fs::write(path, format!("{config}\n[build.minify]\ncss = true\n")).unwrap();
+        assert_rejected_without_replacement(site.path(), &first);
+    } else {
+        regen::build(site.path()).unwrap();
+        let assets = snapshot(&output.join("assets"));
+        assert_eq!(
+            assets
+                .iter()
+                .find(|(name, _)| name.ends_with("broken.css"))
+                .unwrap()
+                .1,
+            b"}"
+        );
+    }
     assert!(!site.path().join(".regen-stage").exists());
 }
 
@@ -460,7 +758,6 @@ fn clean_build_removes_deleted_pages_and_versions_changed_assets() {
         .unwrap()
         .1;
     assert!(String::from_utf8_lossy(css_bytes).contains("red"));
-    assert!(css_bytes.len() < fs::read(css).unwrap().len());
 }
 
 #[test]
@@ -546,7 +843,15 @@ fn unoptimized_code_comments_and_binary_assets_are_preserved() {
     );
     fs::write(site.path().join("public/raw.css"), inline_css).unwrap();
     fs::write(site.path().join("public/empty.bin"), []).unwrap();
-    regen::build(site.path()).unwrap();
+    regen::build_with_options(
+        site.path(),
+        &regen::BuildOptions {
+            minify_css: Some(false),
+            minify_js: Some(false),
+            ..Default::default()
+        },
+    )
+    .unwrap();
     let outputs = snapshot(&site.path().join("dist/assets"));
     let copied = outputs
         .iter()
@@ -785,13 +1090,15 @@ fn page_extensions_templates_and_homepages_are_validated_before_replacement() {
     }
     fs::write(pages.join("about.yaml"), about).unwrap();
 
-    replace(
-        site.path(),
-        "content/en/pages/index.yaml",
-        "slug: \"\"",
-        "slug: home",
-    );
-    assert_rejected_without_replacement(site.path(), &previous);
+    let homepage = fs::read_to_string(pages.join("index.yaml")).unwrap();
+    for slug in ["slug: home", ""] {
+        fs::write(
+            pages.join("index.yaml"),
+            homepage.replace("slug: \"\"", slug),
+        )
+        .unwrap();
+        assert_rejected_without_replacement(site.path(), &previous);
+    }
 }
 
 #[test]
@@ -803,6 +1110,17 @@ fn yaml_schema_and_tag_errors_do_not_replace_output_or_read_external_content() {
     let original = fs::read_to_string(&page).unwrap();
     fs::write(&page, format!("{original}\nunknown: value\n")).unwrap();
     assert_rejected_without_replacement(site.path(), &previous);
+    fs::write(&page, original.replace("slug: about", "slug: null")).unwrap();
+    assert_rejected_without_replacement(site.path(), &previous);
+    for field in ["title:", "description:", "template:"] {
+        let missing_required_field = original
+            .lines()
+            .filter(|line| !line.starts_with(field))
+            .collect::<Vec<_>>()
+            .join("\n");
+        fs::write(&page, missing_required_field).unwrap();
+        assert_rejected_without_replacement(site.path(), &previous);
+    }
     fs::write(&page, &original).unwrap();
 
     let outside = tempdir();
@@ -873,7 +1191,7 @@ fn missing_nonregular_and_invalid_utf8_configuration_preserve_output() {
 }
 
 #[test]
-fn invalid_utf8_content_and_css_are_not_copied_as_binary_assets() {
+fn invalid_utf8_is_rejected_only_for_processed_text() {
     let site = fixture();
     regen::build(site.path()).unwrap();
     let previous = snapshot(&site.path().join("dist"));
@@ -883,7 +1201,29 @@ fn invalid_utf8_content_and_css_are_not_copied_as_binary_assets() {
     assert_rejected_without_replacement(site.path(), &previous);
     fs::write(page, original).unwrap();
     fs::write(site.path().join("assets/site.css"), [0xff]).unwrap();
-    assert_rejected_without_replacement(site.path(), &previous);
+    if cfg!(feature = "minify-css") {
+        let path = site.path().join("regen.toml");
+        let config = fs::read_to_string(&path).unwrap();
+        fs::write(path, format!("{config}\n[build.minify]\ncss = true\n")).unwrap();
+        assert_rejected_without_replacement(site.path(), &previous);
+    }
+    regen::build_with_options(
+        site.path(),
+        &regen::BuildOptions {
+            minify_css: Some(false),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let copied = snapshot(&site.path().join("dist/assets"));
+    assert_eq!(
+        copied
+            .iter()
+            .find(|(name, _)| name.ends_with("site.css"))
+            .unwrap()
+            .1,
+        &[0xff]
+    );
 }
 
 #[test]
@@ -1179,6 +1519,8 @@ fn kernel_io_failures_cannot_publish_partial_output() {
     // The second asset statx inspects its open descriptor. The first assets mkdir
     // creates the namespace; the fourth recreates it after two parent checks.
     // Exercise both renames: assets into the cache, then cache into the hashed tree.
+    // Explicitly process CSS when available so its failed write cannot publish a
+    // partial optimized asset; the featureless run covers the unchanged-copy path.
     for (relative, fault) in [
         (".regen-stage", "statx:error=EIO:when=1"),
         (".regen-previous", "statx:error=EIO:when=1"),
@@ -1209,6 +1551,14 @@ fn kernel_io_failures_cannot_publish_partial_output() {
             .arg(env!("CARGO_BIN_EXE_regen"))
             .args(["build", "--site"])
             .arg(site.path())
+            .args([
+                "--minify-css",
+                if cfg!(feature = "minify-css") {
+                    "true"
+                } else {
+                    "false"
+                },
+            ])
             .output()
             .expect("install strace to run the Linux kernel-fault scenarios");
         assert!(
@@ -1224,4 +1574,520 @@ fn kernel_io_failures_cannot_publish_partial_output() {
         assert!(!site.path().join(".regen-stage").exists());
         assert!(!site.path().join(".regen-previous").exists());
     }
+}
+
+#[test]
+fn development_build_is_unminified_review_output_and_preserves_release() {
+    let site = fixture();
+    let template = "<!DOCTYPE html>\n<main>   {{ build.profile }} / {{ build.review }}   </main>\n";
+    fs::write(site.path().join("templates/page.html"), template).unwrap();
+    regen::build(site.path()).unwrap();
+    let release = snapshot(&site.path().join("dist"));
+    let css = fs::read(site.path().join("assets/site.css")).unwrap();
+    let javascript = b"function publicEntry (value) { return value + 1; }\n";
+    fs::write(site.path().join("assets/app.js"), javascript).unwrap();
+    let built = Command::new(env!("CARGO_BIN_EXE_regen"))
+        .args(["build", "--profile", "dev", "--site"])
+        .arg(site.path())
+        .output()
+        .unwrap();
+    assert!(built.status.success(), "{built:?}");
+    let review = site.path().join("review");
+    assert_eq!(
+        fs::read_to_string(review.join("index.html")).unwrap(),
+        "<!DOCTYPE html>\n<main>   dev / true   </main>\n"
+    );
+    let assets = snapshot(&review.join("assets"));
+    assert_eq!(
+        assets
+            .iter()
+            .find(|(name, _)| name.ends_with("site.css"))
+            .unwrap()
+            .1,
+        &css
+    );
+    assert_eq!(
+        assets
+            .iter()
+            .find(|(name, _)| name.ends_with("app.js"))
+            .unwrap()
+            .1,
+        javascript
+    );
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(review.join("regen-manifest.json")).unwrap()).unwrap();
+    assert_eq!(manifest["profile"], "dev");
+    assert_eq!(manifest["review"], true);
+    assert_eq!(snapshot(&site.path().join("dist")), release);
+    let first = snapshot(&review);
+    regen::build_with_options(
+        site.path(),
+        &regen::BuildOptions {
+            profile: Some("dev"),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(first, snapshot(&review));
+}
+
+#[test]
+fn final_review_retains_release_policy_without_replacing_published_output() {
+    let site = fixture();
+    let root = site.path();
+    let config_path = root.join("regen.toml");
+    let config = fs::read_to_string(&config_path).unwrap();
+    fs::write(
+        config_path,
+        format!(
+            "{config}\n[build]\nprofile = \"dev\"\n\
+             [profiles.release]\nregression_checks = false\n\
+             [profiles.release.minify.css_options]\noptimize = true\nunused_symbols = [\"discard\"]\n"
+        ),
+    )
+    .unwrap();
+    fs::write(
+        root.join("assets/site.css"),
+        ".keep { color: red; } .discard { color: blue; }\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("templates/page.html"),
+        "<main>{{ build.profile }} / {{ build.review }}</main>",
+    )
+    .unwrap();
+    regen::build_with_options(
+        root,
+        &regen::BuildOptions {
+            profile: Some("release"),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let published = snapshot(&root.join("dist"));
+    let release_assets = snapshot(&root.join("dist/assets"));
+    let release_css = release_assets
+        .iter()
+        .find(|(path, _)| path.ends_with("site.css"))
+        .unwrap()
+        .1;
+    assert_eq!(
+        std::str::from_utf8(release_css)
+            .unwrap()
+            .contains(".discard"),
+        !cfg!(feature = "minify-css")
+    );
+    let built = Command::new(env!("CARGO_BIN_EXE_regen"))
+        .args(["build", "--profile", "release", "--review", "--site"])
+        .arg(root)
+        .output()
+        .unwrap();
+    assert!(built.status.success(), "{built:?}");
+    assert_eq!(
+        fs::read_to_string(root.join("review/index.html")).unwrap(),
+        "<main>release / true</main>"
+    );
+    assert_eq!(snapshot(&root.join("review/assets")), release_assets);
+    assert_eq!(snapshot(&root.join("dist")), published);
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("review/regen-manifest.json")).unwrap())
+            .unwrap();
+    assert_eq!(manifest["profile"], "release");
+    assert_eq!(manifest["review"], true);
+    let reviewed = snapshot(&root.join("review"));
+    regen::build_with_options(
+        root,
+        &regen::BuildOptions {
+            profile: Some("release"),
+            review: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(snapshot(&root.join("review")), reviewed);
+}
+
+#[cfg(feature = "minify-css")]
+#[test]
+fn inherited_asset_settings_can_be_overridden_without_changing_profile_destination() {
+    let site = fixture();
+    let path = site.path().join("regen.toml");
+    let mut config = fs::read_to_string(&path).unwrap();
+    config.push_str(
+        "\n[build.minify]\ncss = false\n\
+         [profiles.compact]\nextends = \"dev\"\n\
+         [profiles.compact.minify]\ncss = true\n\
+         [profiles.compact.assets]\nminify = true\n\
+         [profiles.child]\nextends = \"compact\"\n",
+    );
+    fs::write(path, config).unwrap();
+    let source = fs::read(site.path().join("assets/site.css")).unwrap();
+    regen::build_with_options(
+        site.path(),
+        &regen::BuildOptions {
+            profile: Some("child"),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let optimized = snapshot(&site.path().join("review/assets"));
+    assert_ne!(
+        optimized
+            .iter()
+            .find(|(name, _)| name.ends_with("site.css"))
+            .unwrap()
+            .1,
+        &source
+    );
+    let result = Command::new(env!("CARGO_BIN_EXE_regen"))
+        .args([
+            "build",
+            "--profile",
+            "child",
+            "--minify-css",
+            "false",
+            "--site",
+        ])
+        .arg(site.path())
+        .output()
+        .unwrap();
+    assert!(result.status.success(), "{result:?}");
+    let copied = snapshot(&site.path().join("review/assets"));
+    assert_eq!(
+        copied
+            .iter()
+            .find(|(name, _)| name.ends_with("site.css"))
+            .unwrap()
+            .1,
+        &source
+    );
+    assert_ne!(
+        copied.keys().collect::<Vec<_>>(),
+        optimized.keys().collect::<Vec<_>>()
+    );
+    assert!(!site.path().join("dist").exists());
+}
+
+#[cfg(feature = "minify-js")]
+#[test]
+fn javascript_minification_preserves_public_bindings_and_rejects_invalid_assets_atomically() {
+    let site = fixture();
+    let path = site.path().join("regen.toml");
+    let config = fs::read_to_string(&path).unwrap();
+    fs::write(path, format!("{config}\n[build.minify]\njs = true\n")).unwrap();
+    fs::write(
+        site.path().join("assets/classic.js"),
+        "/*! retained license */\n\"use strict\";\n\
+         // Ordinary implementation note.\n/** @license documented notice */\n\
+         function publicEntry (name) { return 'hello ' + name; }\n\
+         const crossFileGlobal = 6 * 7; //! @license trailing MIT notice\n",
+    )
+    .unwrap();
+    fs::write(
+        site.path().join("assets/module.mjs"),
+        "import { answer } from './other.mjs';\nexport const result = answer + 1;\n",
+    )
+    .unwrap();
+    fs::write(
+        site.path().join("assets/other.mjs"),
+        "export const answer = 41;\n",
+    )
+    .unwrap();
+    fs::write(
+        site.path().join("assets/async.mjs"),
+        "export const response = await Promise.resolve(42);\n",
+    )
+    .unwrap();
+    regen::build(site.path()).unwrap();
+    let output = site.path().join("dist");
+    let assets = snapshot(&output.join("assets"));
+    let classic = std::str::from_utf8(
+        assets
+            .iter()
+            .find(|(name, _)| name.ends_with("classic.js"))
+            .unwrap()
+            .1,
+    )
+    .unwrap();
+    assert!(classic.contains("retained license"));
+    assert!(classic.contains("trailing MIT notice"));
+    assert!(classic.contains("documented notice"));
+    assert!(classic.contains("use strict"));
+    assert!(classic.contains("function publicEntry("));
+    assert!(classic.contains("crossFileGlobal"));
+    let module = std::str::from_utf8(
+        assets
+            .iter()
+            .find(|(name, _)| name.ends_with("module.mjs"))
+            .unwrap()
+            .1,
+    )
+    .unwrap();
+    assert!(module.contains("./other.mjs"));
+    assert!(module.contains("result"));
+    let asynchronous = std::str::from_utf8(
+        assets
+            .iter()
+            .find(|(name, _)| name.ends_with("async.mjs"))
+            .unwrap()
+            .1,
+    )
+    .unwrap();
+    assert!(asynchronous.contains("await"));
+    assert!(asynchronous.contains("response"));
+    let previous = snapshot(&output);
+    let broken = b"export function {";
+    fs::write(site.path().join("assets/broken.js"), broken).unwrap();
+    assert_rejected_without_replacement(site.path(), &previous);
+    let broken = [0xff];
+    fs::write(site.path().join("assets/broken.js"), broken).unwrap();
+    assert_rejected_without_replacement(site.path(), &previous);
+    regen::build_with_options(
+        site.path(),
+        &regen::BuildOptions {
+            minify_assets: Some(false),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let copied = snapshot(&output.join("assets"));
+    assert_eq!(
+        copied
+            .iter()
+            .find(|(name, _)| name.ends_with("broken.js"))
+            .unwrap()
+            .1,
+        &broken
+    );
+}
+
+#[cfg(feature = "minify-html")]
+#[test]
+fn html_regression_policy_guards_replacement_and_respects_profile_and_cli_overrides() {
+    let site = fixture();
+    let root = site.path();
+    fs::write(
+        root.join("templates/page.html"),
+        "<!doctype html><title>Checked</title><!-- required marker --><main>stable</main>",
+    )
+    .unwrap();
+    regen::build(root).unwrap();
+    let original = snapshot(&root.join("dist"));
+    let config_path = root.join("regen.toml");
+    let config = fs::read_to_string(&config_path).unwrap();
+    fs::write(
+        config_path,
+        format!(
+            "{config}\n[build]\nprofile = \"automatic\"\n\
+             [profiles.automatic.minify]\nhtml = true\n\
+             [profiles.automatic.minify.html_options]\nremove_comments = true\n\
+             [profiles.accepted]\nextends = \"automatic\"\nregression_checks = false\n\
+             [profiles.child]\nextends = \"accepted\"\n\
+             [profiles.checked]\nextends = \"child\"\nregression_checks = true\n"
+        ),
+    )
+    .unwrap();
+    assert_rejected_without_replacement(root, &original);
+    regen::build_with_options(
+        root,
+        &regen::BuildOptions {
+            profile: Some("child"),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let html = fs::read_to_string(root.join("dist/index.html")).unwrap();
+    assert!(!html.contains("required marker"));
+    assert!(html.contains("<main>stable</main>"));
+    let accepted = snapshot(&root.join("dist"));
+    let rejected = Command::new(env!("CARGO_BIN_EXE_regen"))
+        .args([
+            "build",
+            "--profile",
+            "child",
+            "--regression-checks",
+            "true",
+            "--site",
+        ])
+        .arg(root)
+        .output()
+        .unwrap();
+    assert!(!rejected.status.success());
+    assert_eq!(accepted, snapshot(&root.join("dist")));
+    assert!(!root.join(".regen-stage").exists());
+    let accepted_override = Command::new(env!("CARGO_BIN_EXE_regen"))
+        .args([
+            "build",
+            "--profile",
+            "checked",
+            "--regression-checks",
+            "false",
+            "--site",
+        ])
+        .arg(root)
+        .output()
+        .unwrap();
+    assert!(accepted_override.status.success(), "{accepted_override:?}");
+    assert_eq!(
+        html,
+        fs::read_to_string(root.join("dist/index.html")).unwrap()
+    );
+}
+
+#[cfg(feature = "minify-html")]
+#[test]
+fn warning_regressions_inherit_and_cli_overrides_preserve_installation_policy() {
+    let site = fixture();
+    let root = site.path();
+    fs::write(
+        root.join("templates/page.html"),
+        "<!doctype html><title>Checked</title><!-- required marker --><main>stable</main>",
+    )
+    .unwrap();
+    regen::build(root).unwrap();
+    let config_path = root.join("regen.toml");
+    let config = fs::read_to_string(&config_path).unwrap();
+    fs::write(
+        config_path,
+        format!(
+            "{config}\n[build]\nprofile = \"child\"\nregression_checks = true\n\
+             [build.minify]\nhtml = true\n\
+             [build.minify.html_options]\nremove_comments = true\n\
+             [profiles.parent]\nregression_checks = \"warn\"\n\
+             [profiles.child]\nextends = \"parent\"\n\
+             [profiles.checked]\nextends = \"child\"\nregression_checks = true\n"
+        ),
+    )
+    .unwrap();
+    let warned = Command::new(env!("CARGO_BIN_EXE_regen"))
+        .args(["build", "--site"])
+        .arg(root)
+        .output()
+        .unwrap();
+    assert!(warned.status.success(), "{warned:?}");
+    let stderr = String::from_utf8(warned.stderr).unwrap();
+    let warnings: Vec<_> = stderr
+        .lines()
+        .filter(|line| line.starts_with("warning:"))
+        .collect();
+    for language in ["en", "de"] {
+        for page in ["index", "about"] {
+            assert!(
+                warnings
+                    .iter()
+                    .any(|line| line.contains(&format!("{language} page {page}"))),
+                "{stderr}"
+            );
+        }
+    }
+    let html = fs::read_to_string(root.join("dist/index.html")).unwrap();
+    assert!(!html.contains("required marker"));
+    assert!(html.contains("<main>stable</main>"));
+    let installed = snapshot(&root.join("dist"));
+    let enforced = Command::new(env!("CARGO_BIN_EXE_regen"))
+        .args(["build", "--regression-checks", "true", "--site"])
+        .arg(root)
+        .output()
+        .unwrap();
+    assert!(!enforced.status.success());
+    assert_eq!(installed, snapshot(&root.join("dist")));
+    let overridden = Command::new(env!("CARGO_BIN_EXE_regen"))
+        .args([
+            "build",
+            "--profile",
+            "checked",
+            "--regression-checks",
+            "warn",
+            "--site",
+        ])
+        .arg(root)
+        .output()
+        .unwrap();
+    assert!(overridden.status.success(), "{overridden:?}");
+    assert!(
+        String::from_utf8(overridden.stderr)
+            .unwrap()
+            .contains("warning:")
+    );
+    assert_eq!(
+        html,
+        fs::read_to_string(root.join("dist/index.html")).unwrap()
+    );
+    let unchecked = Command::new(env!("CARGO_BIN_EXE_regen"))
+        .args(["build", "--regression-checks", "false", "--site"])
+        .arg(root)
+        .output()
+        .unwrap();
+    assert!(unchecked.status.success(), "{unchecked:?}");
+    assert!(
+        !String::from_utf8(unchecked.stderr)
+            .unwrap()
+            .contains("warning:")
+    );
+    assert_eq!(
+        html,
+        fs::read_to_string(root.join("dist/index.html")).unwrap()
+    );
+
+    // Warning mode must not swallow ordinary content validation failures.
+    let installed = snapshot(&root.join("dist"));
+    fs::write(root.join("content/en/pages/index.yaml"), "title: [").unwrap();
+    let invalid = Command::new(env!("CARGO_BIN_EXE_regen"))
+        .args(["build", "--site"])
+        .arg(root)
+        .output()
+        .unwrap();
+    assert!(!invalid.status.success());
+    assert_eq!(installed, snapshot(&root.join("dist")));
+    assert!(!root.join(".regen-stage").exists());
+    assert!(!root.join(".regen-previous").exists());
+}
+
+#[test]
+fn regression_modes_parse_exact_spellings_and_reject_invalid_build_settings() {
+    for (value, expected) in [
+        ("false", regen::RegressionCheckMode::Off),
+        ("warn", regen::RegressionCheckMode::Warn),
+        ("true", regen::RegressionCheckMode::Enforce),
+    ] {
+        assert_eq!(
+            value.parse::<regen::RegressionCheckMode>().unwrap(),
+            expected
+        );
+    }
+    assert!("automatic".parse::<regen::RegressionCheckMode>().is_err());
+    let site = fixture();
+    let root = site.path();
+    regen::build(root).unwrap();
+    let previous = snapshot(&root.join("dist"));
+    let config_path = root.join("regen.toml");
+    let config = fs::read_to_string(&config_path).unwrap();
+    // Reject non-boolean scalars and string spellings other than "warn".
+    for value in ["\"true\"", "1"] {
+        fs::write(
+            &config_path,
+            format!("{config}\n[build]\nregression_checks = {value}\n"),
+        )
+        .unwrap();
+        let error = regen::build(root).unwrap_err();
+        let diagnostic = format!("{error:#}");
+        for accepted in ["true", "false", "warn"] {
+            assert!(diagnostic.contains(accepted), "{diagnostic}");
+        }
+        assert_eq!(previous, snapshot(&root.join("dist")));
+        assert!(!root.join(".regen-stage").exists());
+    }
+    fs::write(config_path, config).unwrap();
+    let rejected = Command::new(env!("CARGO_BIN_EXE_regen"))
+        .args(["build", "--regression-checks", "automatic", "--site"])
+        .arg(root)
+        .output()
+        .unwrap();
+    assert!(!rejected.status.success());
+    let diagnostic = String::from_utf8(rejected.stderr).unwrap();
+    for accepted in ["true", "false", "warn"] {
+        assert!(diagnostic.contains(accepted), "{diagnostic}");
+    }
+    assert_eq!(previous, snapshot(&root.join("dist")));
+    assert!(!root.join(".regen-stage").exists());
 }

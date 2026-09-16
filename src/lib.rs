@@ -3,19 +3,25 @@
 //! [`build`] coordinates validated configuration and translations, asset preparation,
 //! rendering, and transactional output replacement. Input policy and filesystem
 //! recovery live in separate modules so rendering cannot bypass those boundaries.
-//! Inputs and the site directory must remain unchanged for the duration of a build;
-//! templates are trusted local code, not sandboxed content.
+//! Inputs must remain unchanged during generation. Configured hooks and templates
+//! are trusted local code, not sandboxed content; hooks can have external effects.
 
 mod assets;
 mod config;
 mod content;
 mod files;
+#[cfg(feature = "hooks")]
+mod hooks;
+#[cfg(feature = "minify-html")]
+mod html;
 #[cfg(test)]
 #[path = "../tests/common/mod.rs"]
 mod test_support;
 
 use anyhow::{Context as _, Result, ensure};
 use config::Config;
+use config::ResolvedBuild;
+pub use config::{BuildOptions, RegressionCheckMode};
 use content::{Content, route};
 use files::{Transaction, files, output_file, read_text, reject_symlinks, write_output};
 use serde::Serialize;
@@ -35,7 +41,7 @@ pub struct BuildSummary {
     pub languages: usize,
     /// Source files in `assets/`, excluding unchanged files copied from `public/`.
     pub assets: usize,
-    /// Installed `dist/` directory beneath the canonicalized site root.
+    /// Installed `dist/` or review-only `review/` beneath the canonical site root.
     pub output: PathBuf,
 }
 
@@ -56,15 +62,15 @@ struct Navigation<'a> {
     url: String,
 }
 
-/// Build an optimized multilingual site from `regen.toml`, Tera templates, and YAML.
+/// Build a multilingual site using its configured default profile.
 ///
 /// Reads required `templates/` and `content/` trees and optional `assets/` and
-/// `public/` trees beneath `root`. Replaces `dist/` only when its manifest identifies
-/// it as ReGen output; unrelated output and interrupted build state are preserved.
+/// `public/` trees beneath `root`. Replaces `dist/` (or `review/` for review profiles)
+/// only when owned by ReGen; unrelated output and interrupted state are preserved.
 ///
-/// No network, process execution, environment expansion, or current timestamp
-/// participates in generation. The caller must keep the site tree unchanged until
-/// this function returns. This is not a sandbox for hostile templates.
+/// Hooks require the non-default Cargo feature `hooks` and explicit configuration.
+/// Standard builds cannot execute hooks. Enabled hooks run trusted commands with
+/// the caller's privileges; without hooks, generation is process-free and offline.
 ///
 /// # Errors
 ///
@@ -77,6 +83,9 @@ struct Navigation<'a> {
 /// and `.regen-stage`. An error removing the backup can occur **after** the new
 /// site is installed; the error identifies this case.
 ///
+/// Required post-hook failures also return an error **after** successful output
+/// installation. Hooks must not mutate generated output and invalidate its manifest.
+///
 /// # Examples
 ///
 /// ```no_run
@@ -87,10 +96,52 @@ struct Navigation<'a> {
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn build(root: &Path) -> Result<BuildSummary> {
+    build_with_options(root, &BuildOptions::default())
+}
+
+/// Build with an explicit profile, review destination, and minification overrides.
+///
+/// CLI/API overrides win over inherited project configuration. `release` writes
+/// `dist/` and compact-prints CSS when compiled; `dev` writes unminified `review/`.
+/// Setting [`BuildOptions::review`] forces `review/` while retaining the selected
+/// profile's settings and hooks. HTML/JS processing and destructive optimizations
+/// require explicit opt-in. Hook execution and recovery follow [`build`]'s contract.
+///
+/// # Errors
+///
+/// In addition to [`build`]'s errors, rejects unknown profiles, inheritance cycles
+/// and effective hooks or minification unavailable in this executable's features.
+pub fn build_with_options(root: &Path, options: &BuildOptions<'_>) -> Result<BuildSummary> {
     reject_symlinks(root)?;
     let root = fs::canonicalize(root).context("site directory does not exist")?;
     let config = Config::load(&root)?;
-    let content = Content::load(&root, &config)?;
+    let settings = config.resolve_build(options)?;
+    #[cfg(not(feature = "hooks"))]
+    {
+        build_site(&root, &config, &settings)
+    }
+    #[cfg(feature = "hooks")]
+    {
+        let output = root.join(if settings.review { "review" } else { "dist" });
+        let built = hooks::run_pre(&settings, &root, &output)
+            .and_then(|()| build_site(&root, &config, &settings));
+        let post = hooks::run_post(&settings, &root, &output, built.as_ref().err());
+        match (built, post) {
+            (Ok(summary), Ok(())) => Ok(summary),
+            (Err(error), Ok(())) => Err(error),
+            (Err(error), Err(post)) => {
+                Err(error.context(format!("post-build hooks also failed: {post:#}")))
+            }
+            (Ok(_), Err(post)) => Err(post.context(format!(
+                "site installed at {}, but post-build hooks failed",
+                output.display()
+            ))),
+        }
+    }
+}
+
+fn build_site(root: &Path, config: &Config, settings: &ResolvedBuild) -> Result<BuildSummary> {
+    let content = Content::load(root, config)?;
     let template_root = root.join("templates");
     let mut templates = Vec::new();
     for source in files(&template_root, false)? {
@@ -117,18 +168,18 @@ pub fn build(root: &Path) -> Result<BuildSummary> {
         .map_err(|error| anyhow::anyhow!("cannot load templates: {error}"))?;
     let public_root = root.join("public");
     let public = files(&public_root, true)?;
-    let transaction = Transaction::begin(&root)?;
+    let transaction = Transaction::begin(root, if settings.review { "review" } else { "dist" })?;
     let stage = transaction.stage();
-    let assets = assets::prepare(&root, stage)?;
+    let assets = assets::prepare(
+        root,
+        stage,
+        &settings.minify,
+        settings.minify_assets,
+        settings.regression_checks,
+    )?;
     let asset_base = format!("{}{}", config.base_path, assets.base);
     let site_root = format!("{}/", config.base_path);
     copy_public(&public_root, public, stage)?;
-    let mut html_config = minify_html::Cfg::new();
-    // Preserve license/attribution comments. CSS assets are optimized separately;
-    // inline CSS and JS retain their original semantics and attribution.
-    html_config.keep_comments = true;
-    html_config.keep_closing_tags = true;
-    html_config.keep_html_and_head_opening_tags = true;
     let mut sitemap = String::from(
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\" xmlns:xhtml=\"http://www.w3.org/1999/xhtml\">\n",
     );
@@ -155,6 +206,10 @@ pub fn build(root: &Path) -> Result<BuildSummary> {
         context.insert("navigation", &navigation);
         context.insert("asset_base", &asset_base);
         context.insert("site_root", &site_root);
+        context.insert(
+            "build",
+            &serde_json::json!({"profile": settings.profile, "review": settings.review}),
+        );
         for (id, page) in &localized.pages {
             let path = route(&language.code, &config.site.default_language, &page.slug);
             let url = format!("{}{path}", config.site.base_url);
@@ -182,11 +237,24 @@ pub fn build(root: &Path) -> Result<BuildSummary> {
                 anyhow::anyhow!("cannot render {} page {id}: {error}", language.code)
             })?;
             let relative = format!("{}index.html", path.trim_start_matches('/'));
-            write_output(
-                stage,
-                &relative,
-                &minify_html::minify(html.as_bytes(), &html_config),
-            )?;
+            #[cfg(feature = "minify-html")]
+            let bytes = if settings.minify.html {
+                let optimized = html::optimize(&html, &settings.minify.html_options);
+                if settings.regression_checks != RegressionCheckMode::Off {
+                    settings.regression_checks.check(
+                        html::check_regression(&html, &optimized),
+                        "HTML",
+                        format_args!("{} page {id}", language.code),
+                        "minification changed the parsed HTML tree, text or attributes",
+                    )?;
+                }
+                std::borrow::Cow::Owned(optimized)
+            } else {
+                std::borrow::Cow::Borrowed(html.as_bytes())
+            };
+            #[cfg(not(feature = "minify-html"))]
+            let bytes = std::borrow::Cow::Borrowed(html.as_bytes());
+            write_output(stage, &relative, &bytes)?;
             sitemap.push_str("<url><loc>");
             sitemap.push_str(&xml_escape(&url));
             sitemap.push_str("</loc>");
@@ -203,7 +271,7 @@ pub fn build(root: &Path) -> Result<BuildSummary> {
     }
     sitemap.push_str("</urlset>\n");
     write_output(stage, "sitemap.xml", sitemap.as_bytes())?;
-    write_manifest(stage)?;
+    write_manifest(stage, &settings.profile, settings.review)?;
     transaction.commit().map(|output| BuildSummary {
         pages: page_count,
         languages: config.languages.len(),
@@ -315,10 +383,12 @@ struct FileDigest {
 
 /// Deterministic output inventory and the ownership marker for later replacements.
 #[derive(Serialize)]
-struct Manifest {
+struct Manifest<'a> {
     format: u32,
     generator: &'static str,
     version: &'static str,
+    profile: &'a str,
+    review: bool,
     files: BTreeMap<String, FileDigest>,
 }
 
@@ -340,7 +410,7 @@ fn file_digest(mut input: impl Read, buffer: &mut [u8]) -> std::io::Result<FileD
 }
 
 /// Inventory final bytes before writing the marker, which cannot hash itself.
-fn write_manifest(stage: &Path) -> Result<()> {
+fn write_manifest(stage: &Path, profile: &str, review: bool) -> Result<()> {
     let mut entries = BTreeMap::new();
     let mut buffer = [0_u8; 65536];
     for source in files(stage, false)? {
@@ -357,6 +427,8 @@ fn write_manifest(stage: &Path) -> Result<()> {
         format: 1,
         generator: "ReGen",
         version: env!("CARGO_PKG_VERSION"),
+        profile,
+        review,
         files: entries,
     };
     let mut bytes =

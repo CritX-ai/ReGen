@@ -1,6 +1,6 @@
 [package]
 name = "regen-ssg"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2024"
 rust-version = "1.98.1"
 description = "Opinionated, reproducible multilingual static site generation with Tera and YAML"
@@ -26,6 +26,8 @@ include = [
     "/src/config.rs",
     "/src/content.rs",
     "/src/files.rs",
+    "/src/hooks.rs",
+    "/src/html.rs",
     "/src/lib.rs",
     "/src/main.rs",
     "/tests/generation.rs",
@@ -34,8 +36,17 @@ include = [
     "/tests/unit/assets.rs",
     "/tests/unit/files.rs",
     "/tests/unit/rendering.rs",
+    "/tests/unit/build_config.rs",
+    "/tests/unit/hooks.rs",
+    "/tests/unit/html.rs",
+    "/tests/minification_assets.rs",
     "/examples/build_docs.rs",
+    "/examples/deployment/wrangler.jsonc",
+    "/examples/deployment/cloudflare-workers.sh",
+    "/examples/deployment/github-pages.yml",
+    "/examples/deployment/gitlab-pages.yml",
     "/examples/minimal/regen.toml",
+    "/examples/minimal/hooks/report.py",
     "/examples/minimal/assets/mark.svg",
     "/examples/minimal/assets/site.css",
     "/examples/minimal/content/de/site.yaml",
@@ -46,6 +57,7 @@ include = [
     "/examples/minimal/templates/base.html",
     "/examples/minimal/templates/page.html",
     "/docs/guide.md",
+    "/docs/reference.md",
     "/docs/architecture.md",
     "/docs/deployment.md",
     "/docs/license.md",
@@ -73,6 +85,20 @@ include = [
     "/site/assets/fonts/provenance.json",
 ]
 
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/regen-{ version }-{ target }.tar.gz"
+bin-dir = "regen-{ version }-{ target }/{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
+disabled-strategies = ["quick-install"]
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-url = "{ repo }/releases/download/v{ version }/regen-{ version }-{ target }.zip"
+pkg-fmt = "zip"
+
+[package.metadata.binstall.overrides.aarch64-pc-windows-msvc]
+pkg-url = "{ repo }/releases/download/v{ version }/regen-{ version }-{ target }.zip"
+pkg-fmt = "zip"
+
 [lib]
 name = "regen"
 
@@ -80,11 +106,26 @@ name = "regen"
 name = "regen"
 path = "src/main.rs"
 
+[features]
+default = ["minify-html", "minify-css", "minify-js"]
+minify-html = ["dep:minify-html", "dep:scraper"]
+minify-css = ["dep:lightningcss"]
+minify-js = ["dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_codegen", "dep:oxc_minifier", "dep:oxc_parser", "dep:oxc_semantic", "dep:oxc_span"]
+hooks = []
+
 [dependencies]
 anyhow = "=1.0.104"
 clap = { version = "=4.6.5", features = ["derive"] }
-lightningcss = { version = "=1.0.0-alpha.72", default-features = false }
-minify-html = "=0.18.1"
+lightningcss = { version = "=1.0.0-alpha.72", default-features = false, optional = true }
+minify-html = { version = "=0.18.1", optional = true }
+oxc_allocator = { version = "=0.95.0", optional = true }
+oxc_ast = { version = "=0.95.0", optional = true }
+oxc_codegen = { version = "=0.95.0", optional = true }
+oxc_minifier = { version = "=0.95.0", optional = true }
+oxc_parser = { version = "=0.95.0", optional = true }
+oxc_semantic = { version = "=0.95.0", optional = true }
+oxc_span = { version = "=0.95.0", optional = true }
+scraper = { version = "=0.27.0", default-features = false, optional = true }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.151"
 serde-saphyr = { version = "=1.2.0", default-features = false, features = ["deserialize"] }

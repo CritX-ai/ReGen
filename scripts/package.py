@@ -179,7 +179,7 @@ def collect_licenses(destination, target):
         lines.extend([f"{package['name']} {package['version']}: {package['license'] or 'see license files'}", package["source"]])
         lines.extend(f"  licenses/{path}" for path in package["notices"])
         if package["notice_source_gap"]:
-            lines.extend(["  UPSTREAM NOTICE SOURCE GAP — disclosed; see docs/releasing.md for the release decision", "  " + package["notice_source_gap"]["reason"]])
+            lines.extend(["  UPSTREAM NOTICE SOURCE GAP — original license or copyright files are unavailable; details below", "  " + package["notice_source_gap"]["reason"]])
         lines.append("")
     lines.extend([f"Rust {TOOLCHAIN}", inventory["rust"]["source"]])
     lines.extend(f"  licenses/{path}" for path in inventory["rust"]["notices"])
@@ -241,7 +241,7 @@ def main():
         for document in ("LICENSE", "README.md", "CHANGELOG.md", "SECURITY.md", "CONTRIBUTING.md", "Cargo.lock"):
             shutil.copyfile(ROOT / document, package / document)
         shutil.copytree(ROOT / "docs", package / "docs")
-        shutil.copytree(ROOT / "examples" / "minimal", package / "examples" / "minimal", ignore=shutil.ignore_patterns("dist", ".regen-stage", ".regen-previous"))
+        shutil.copytree(ROOT / "examples" / "minimal", package / "examples" / "minimal", ignore=shutil.ignore_patterns("dist", "review", ".regen-stage", ".regen-previous"))
         assets = package / "site" / "assets"
         assets.mkdir(parents=True)
         for asset in ("regen-logo.svg", "regen-logo-static.svg", "regen-mark.svg"):

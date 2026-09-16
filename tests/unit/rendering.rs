@@ -114,7 +114,7 @@ fn public_copy_propagates_a_real_kernel_read_failure() {
     let source = root.join("mem");
     assert!(fs::symlink_metadata(&source).unwrap().is_file());
     let site = tempdir();
-    let transaction = crate::files::Transaction::begin(site.path()).unwrap();
+    let transaction = crate::files::Transaction::begin(site.path(), "dist").unwrap();
     let error = copy_public(&root, vec![source], transaction.stage()).unwrap_err();
     assert_eq!(
         error
@@ -143,7 +143,7 @@ fn unreadable_files_cannot_be_copied_or_recorded_in_a_successful_manifest() {
     // instead of assuming chmod necessarily makes this file unreadable.
     let readable = File::open(&path).is_ok();
     let copied = copy_public(source.path(), inventory, stage.path());
-    let manifest = write_manifest(source.path());
+    let manifest = write_manifest(source.path(), "release", false);
     if readable {
         copied.unwrap();
         manifest.unwrap();
@@ -171,10 +171,10 @@ fn unreadable_files_cannot_be_copied_or_recorded_in_a_successful_manifest() {
 fn manifest_requires_an_existing_tree_and_preserves_an_existing_marker() {
     let stage = tempdir();
     let missing = stage.path().join("missing");
-    assert!(write_manifest(&missing).is_err());
+    assert!(write_manifest(&missing, "release", false).is_err());
     assert!(!missing.exists());
     fs::write(stage.path().join("regen-manifest.json"), b"existing marker").unwrap();
-    assert!(write_manifest(stage.path()).is_err());
+    assert!(write_manifest(stage.path(), "release", false).is_err());
     assert_eq!(
         fs::read(stage.path().join("regen-manifest.json")).unwrap(),
         b"existing marker"
