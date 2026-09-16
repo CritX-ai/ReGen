@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Combine LLVM executions of the same source region; used by CI and pre-commit."""
+"""Combine LLVM source regions and generate a CI-backed Shields line-coverage endpoint."""
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 
@@ -36,19 +37,44 @@ def require_full(result):
         raise RuntimeError("uncovered production Rust source regions")
 
 
+def badge(report):
+    lines = report["data"][0]["totals"]["lines"]
+    count, covered = lines["count"], lines["covered"]
+    if type(count) is not int or type(covered) is not int or not 0 <= covered <= count or count == 0:
+        raise RuntimeError("invalid production Rust line coverage")
+    # Truncate, never round incomplete coverage up to 100%.
+    tenths = covered * 1000 // count
+    percentage = f"{tenths // 10}.{tenths % 10}".removesuffix(".0")
+    return {
+        "schemaVersion": 1,
+        "label": "Rust coverage",
+        "message": f"{percentage}%",
+        "color": "brightgreen" if covered == count else "yellow",
+        "coverage": {"metric": "production Rust lines", "covered": covered, "count": count},
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--report", type=Path, default=Path("target/coverage/rust.json"))
     parser.add_argument("--output", type=Path, default=Path("target/coverage/rust-source-regions.json"))
     parser.add_argument("--require-full", action="store_true")
+    parser.add_argument("--badge", type=Path, help="write a Shields endpoint using this GitHub Actions run's identity")
     args = parser.parse_args()
     source = Path(__file__).resolve().parents[1] / "src"
-    result = project(json.loads(args.report.read_text()), [str(path.resolve()) for path in source.rglob("*.rs")])
+    report = json.loads(args.report.read_text())
+    result = project(report, [str(path.resolve()) for path in source.rglob("*.rs")])
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(f"Rust source regions: {result['totals']['covered']}/{result['totals']['count']}", flush=True)
     if args.require_full:
         require_full(result)
+    if args.badge:
+        endpoint = badge(report)
+        endpoint["commit"] = os.environ["GITHUB_SHA"]
+        endpoint["run"] = f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+        args.badge.parent.mkdir(parents=True, exist_ok=True)
+        args.badge.write_text(json.dumps(endpoint, indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

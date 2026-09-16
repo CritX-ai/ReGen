@@ -110,6 +110,19 @@ class SourceCoverage(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             check_rust_coverage.require_full(check_rust_coverage.project(report, []))
 
+    def test_badge_uses_line_counts_without_rounding_incomplete_coverage_to_full(self):
+        lines = {"count": 10001, "covered": 10000, "percent": 100}
+        report = {"data": [{"totals": {"lines": lines}}]}
+        partial = check_rust_coverage.badge(report)
+        self.assertEqual(partial["message"], "99.9%")
+        lines["covered"] = lines["count"]
+        complete = check_rust_coverage.badge(report)
+        self.assertEqual(complete["message"], "100%")
+        self.assertNotEqual(partial["color"], complete["color"])
+        lines.update(count=0, covered=0)
+        with self.assertRaises(RuntimeError):
+            check_rust_coverage.badge(report)
+
 
 if __name__ == "__main__":
     unittest.main()

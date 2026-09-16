@@ -165,8 +165,8 @@ jobs:
           cargo +1.98.1 llvm-cov --release --frozen --all-targets --json --output-path target/coverage/rust.json --ignore-filename-regex '/tests/|/examples/' -- --include-ignored
       - name: Annotate uncovered Rust source
         run: cargo +1.98.1 llvm-cov report --release --html --output-dir target/coverage/rust-html --ignore-filename-regex '/tests/|/examples/'
-      - name: Combine executions of each distinct Rust source region
-        run: python3 scripts/check_rust_coverage.py
+      - name: Combine source regions and generate the measured coverage badge
+        run: python3 scripts/check_rust_coverage.py --badge target/coverage/coverage.json
       - name: Measure offline release statements and branches
         env:
           COVERAGE_FILE: target/coverage/python.coverage
@@ -260,4 +260,14 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
+
+  pages:
+    name: Publish verified documentation and coverage
+    needs: aggregate
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml
 

@@ -22,10 +22,11 @@ POEM_ROUTES = {
     "guide/poem/de/index.html": ("de", {"en": "guide/poem/", "de": "guide/poem/de/"}),
 }
 POEM_HOSTS = {"index.html"}
-# Release status is deliberately live; all other documentation resources stay local.
-RELEASE_BADGES = {
+# Release and CI coverage badges are live; all other documentation resources stay local.
+LIVE_BADGES = {
     "https://img.shields.io/github/v/release/CritX-ai/ReGen?label=GitHub&style=flat-square",
     "https://img.shields.io/crates/v/regen-ssg?label=crates.io&style=flat-square",
+    "https://img.shields.io/endpoint?url=https%3A%2F%2Fregen.critx.ai%2Fcoverage.json&style=flat-square",
 }
 VOID_ELEMENTS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
 CSS_URL = re.compile(
@@ -228,7 +229,7 @@ class Site:
             require(not resource and resolved.scheme in {"mailto", "tel"}, f"unexpected URL scheme in {source}: {destination}")
             return
         if origin(resolved) != origin(self.base):
-            require(not resource or (source == "index.html" and destination in RELEASE_BADGES),
+            require(not resource or (source == "index.html" and destination in LIVE_BADGES),
                     f"external resource dependency in {source}: {destination}")
             return
         require(not resolved.username and not resolved.password, f"credential-bearing URL in {source}")

@@ -25,6 +25,8 @@ ReGen and the generated sites do not need Python or the project's test tools.
 
 Coverage includes production `src/` code and the CLI, but excludes tests, the documentation builder and dependencies. CI requires every executable source line and region to be exercised. The source-region count combines executions across binaries and generic instantiations; LLVM's separate native summary uses a different aggregation and can show lower totals. These are line and region measurements, not branch coverage.
 
+The **Rust coverage** badge in the README and documentation shows production-line coverage from the most recently deployed, verified `main` CI run. CI generates `coverage.json` from the measured line counts, including the source commit and run URL. Documentation deployment consumes that same run's coverage artifact only after every verification job succeeds. Shields.io renders the percentage; incomplete coverage is never rounded up to 100%. A failed or pending run leaves the previous badge in place, and Shields.io caching can delay updates.
+
 ## Boundaries
 
 Coverage is measured on Linux. Windows and macOS have their own native build and test jobs. Failure tests exercise unreadable files, failed writes and interrupted renames; they do not simulate every disk, operating-system or power-loss failure.

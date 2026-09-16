@@ -61,6 +61,9 @@ struct Arguments {
     /// Completed static directory. The destination must not already exist.
     #[arg(long)]
     output: PathBuf,
+    /// CI-generated Shields endpoint, included in the generated hash manifest.
+    #[arg(long)]
+    coverage_badge: Option<PathBuf>,
 }
 
 /// Authored navigation groups with a fixed presentation order.
@@ -206,6 +209,10 @@ fn main() -> Result<()> {
         )?;
     }
     copy_generated(&poem.output, &docs_root.join("public/guide/poem"))?;
+    if let Some(badge) = &arguments.coverage_badge {
+        fs::copy(badge, docs_root.join("public/coverage.json"))
+            .context("cannot copy CI coverage endpoint")?;
+    }
     fs::write(
         docs_root.join("public/robots.txt"),
         format!(
