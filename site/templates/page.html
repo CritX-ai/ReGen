@@ -25,6 +25,7 @@
       <span class="brand-product">ReGen <span class="brand-description">Documentation</span></span>
     </a>
     <nav class="header-links" aria-label="Project">
+      <button id="docs-search-open" class="docs-search-button" type="button" aria-haspopup="dialog" aria-controls="docs-search-dialog" aria-keyshortcuts="Control+k Meta+k" hidden>Search</button>
       <a class="repository-link" href="{{ site.repository_url }}" aria-label="ReGen on GitHub" title="ReGen on GitHub"><img src="{{ asset_base }}/github-mark.svg" width="24" height="24" alt=""></a>
     </nav>
   </header>
@@ -156,5 +157,6 @@
   <footer class="site-footer">
     <p>Built with ReGen, by <a href="https://critx.net">CritX</a></p>
   </footer>
+  {% include "search.html" %}
 </body>
 </html>

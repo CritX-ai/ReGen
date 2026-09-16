@@ -75,6 +75,30 @@ a:hover { color: var(--cyan-bright); text-decoration-thickness: 2px; }
 .release-badges a { display: inline-flex; align-items: center; min-height: 44px; }
 .release-badges img { display: block; height: 20px; }
 
+/* Search is a local enhancement; the reading surface remains script-independent. */
+.docs-search-button { min-height: 44px; padding: 0.5rem 0.75rem; border: 1px solid var(--rule-strong); border-radius: 0; background: transparent; color: var(--silver); font: inherit; cursor: pointer; }
+.docs-search-button:hover { background: var(--raised); color: var(--cyan-bright); border-color: var(--cyan); }
+.docs-search-button[hidden] { display: none; }
+.docs-search-dialog { width: min(42rem, calc(100% - 2rem)); max-width: none; max-height: calc(100vh - 2rem); max-height: calc(100dvh - 2rem); margin: auto; padding: clamp(1rem, 3vw, 1.75rem); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--rule-strong); background: var(--surface); color: var(--white); scrollbar-gutter: stable; }
+.docs-search-dialog::backdrop { background: rgb(0 0 0 / 0.8); }
+.docs-search-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; margin-block-end: 1.25rem; }
+.docs-search-heading h2 { min-width: 0; margin: 0; font: 600 clamp(1.2rem, 3vw, 1.5rem)/1.3 var(--display); letter-spacing: -0.025em; text-wrap: balance; overflow-wrap: anywhere; }
+.docs-search-heading form { flex: none; margin: 0; }
+.docs-search-heading button { font-size: 0.8rem; }
+.docs-search-label { display: block; margin-block-end: 0.4rem; color: var(--silver); font-size: 0.85rem; }
+.docs-search-input { display: block; width: 100%; min-width: 0; min-height: 48px; padding: 0.65rem 0.75rem; border: 1px solid var(--rule-strong); border-radius: 0; background: var(--canvas); color: var(--white); font: 400 1rem/1.5 var(--sans); }
+.docs-search-help, .docs-search-status { margin: 0.75rem 0 0; color: var(--muted); font-size: 0.8rem; line-height: 1.5; }
+.docs-search-status { margin-block-start: 1.25rem; color: var(--silver); font-variant-numeric: tabular-nums; }
+.docs-search-results { margin: 0.75rem 0 0; padding: 0; list-style: none; }
+.docs-search-results:empty { margin: 0; }
+.docs-search-result { display: block; min-height: 44px; padding: 1rem 0.5rem; border-block-start: 1px solid var(--rule); text-decoration: none; overflow-wrap: anywhere; }
+.docs-search-result:hover { background: var(--raised); text-decoration: none; }
+.docs-search-result:focus-visible { outline-offset: -2px; background: var(--raised); }
+.docs-search-result-title { display: block; font: 600 1rem/1.4 var(--display); }
+.docs-search-result-page { display: block; margin-block-start: 0.2rem; color: var(--silver); font-size: 0.75rem; }
+.docs-search-result-snippet { display: block; margin-block-start: 0.5rem; color: var(--muted); font-size: 0.85rem; line-height: 1.55; }
+.docs-search-dialog:not([open]) { display: none; }
+
 .reading-layout { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: clamp(2rem, 4vw, 4rem); align-items: start; margin-block: 2.75rem 4rem; }
 .sidebar { position: sticky; top: 1.5rem; max-height: calc(100dvh - 3rem); overflow-y: auto; padding: 0.25rem 1rem 0.75rem 0.25rem; border-inline-end: 1px solid var(--rule); font-size: 0.8rem; scrollbar-width: thin; }
 .nav-title { margin: 0 0 0.75rem; color: var(--silver); font-family: var(--display); font-size: 0.9rem; font-weight: 600; line-height: 1.4; }
@@ -419,7 +443,7 @@ details[open] > summary { margin-block-end: 0.5rem; }
   .brand-name { font-size: 1.5rem; }
   .brand-product { padding-inline-start: 0.75rem; font-size: 1.2rem; }
   .brand-description { font-size: 0.65rem; }
-  .header-links { flex-direction: column; align-items: center; gap: 0; font-size: 0.75rem; }
+  .header-links { flex-direction: row; align-items: center; justify-content: flex-end; flex-basis: 100%; gap: 0.75rem; font-size: 0.8rem; }
   .prose pre { padding: 1rem; }
   .prose h2 { font-size: 1.5rem; }
 }
@@ -433,6 +457,7 @@ details[open] > summary { margin-block-end: 0.5rem; }
   :root { color-scheme: light; color: #000; background: #fff; font-size: 11pt; --white: #000; --silver: #333; --muted: #333; --black: #fff; --surface: #fff; --raised: #eee; --rule: #bbb; --rule-strong: #888; --orange: #333; --cyan: #333; --green: #333; }
   body { max-width: none; padding: 0; }
   .site-header, .sidebar, .mobile-menu, .mobile-contents, .site-footer, .skip { display: none; }
+  .docs-search-dialog, .docs-search-dialog::backdrop { display: none !important; }
   .reading-layout { display: block; margin: 0; }
   .page-header { margin-block-end: 1.5rem; }
   h1, .home-page h1 { font-size: 28pt; }

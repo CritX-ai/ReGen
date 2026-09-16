@@ -78,7 +78,7 @@ Inherited `REGEN_ERROR` and `REGEN_ERROR_TRUNCATED` are removed before every com
 
 ### Input gate
 
-Strict fields, duplicate-key rejection and portable lowercase ASCII paths reject ambiguous inputs. Symlinks, special files, YAML includes, unknown content files, extra language directories and output collisions are rejected. Unicode belongs in content; generic `site` and `data` mappings accept JSON-compatible values. See [content](../src/content.rs), [paths](../src/files.rs) and [configuration](../src/config.rs).
+Strict fields and duplicate-key rejection catch ambiguous inputs. [Path checks](reference.md#paths-and-filenames) preserve authored case while rejecting case-only collisions, unsafe segments, symlinks and special files. YAML includes, unknown content files, extra language directories and output collisions are rejected. Unicode belongs in content; generic `site` and `data` mappings accept JSON-compatible values. See [content](../src/content.rs), [paths](../src/files.rs) and [configuration](../src/config.rs).
 
 ### Translation routes
 
@@ -127,3 +127,5 @@ Replacement uses two renames, so the selected output can briefly be absent. Serv
 Authors control templates, HTML, JavaScript and media. ReGen is not a hostile-upload sandbox, sanitizer, resource-quota system or metadata scrubber. Escaping is context-dependent; review `safe`, scripts, styles and URL attributes. Core generation makes no network requests or external process calls; [hooks](#trusted-process-boundary) can do both. Generated URLs may still cause browser requests, and build dependencies and their scripts run with the build user's privileges. See [security boundaries](../SECURITY.md).
 
 The CLI omits built-in Markdown conversion, automatic translation, remote data fetching, plugins, watching, serving and deployment. Opt-in hooks are arbitrary external commands, not built-in implementations of those features. The documentation you are reading uses repository-only Rust preprocessing around `regen::build(&Path)`, not a second production input format.
+
+Documentation search embeds its index and script in each page. Queries stay in the browser, with results linked to the matching section.

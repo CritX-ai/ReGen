@@ -23,7 +23,7 @@ use config::Config;
 use config::ResolvedBuild;
 pub use config::{BuildOptions, RegressionCheckMode};
 use content::{Content, route};
-use files::{Transaction, files, output_file, read_text, reject_symlinks, write_output};
+use files::{PathCases, Transaction, files, output_file, read_text, reject_symlinks, write_output};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -141,14 +141,14 @@ pub fn build_with_options(root: &Path, options: &BuildOptions<'_>) -> Result<Bui
 }
 
 fn build_site(root: &Path, config: &Config, settings: &ResolvedBuild) -> Result<BuildSummary> {
-    let content = Content::load(root, config)?;
+    let mut content = Content::load(root, config)?;
     let template_root = root.join("templates");
     let mut templates = Vec::new();
     for source in files(&template_root, false)? {
         ensure!(
             source
                 .extension()
-                .is_some_and(|extension| extension == "html"),
+                .is_some_and(|extension| extension.eq_ignore_ascii_case("html")),
             "only .html Tera templates are supported: {}",
             source.display()
         );
@@ -161,7 +161,8 @@ fn build_site(root: &Path, config: &Config, settings: &ResolvedBuild) -> Result<
         templates.push((name, read_text(&source)?));
     }
     let mut tera = Tera::new();
-    tera.autoescape_on([".html"]);
+    // Every loaded template is HTML, including mixed-case filename extensions.
+    tera.autoescape_on([""]);
     tera.set_escape_fn(escape_html);
     tera.register_filter("group_by", ordered_group_by);
     tera.add_raw_templates(templates)
@@ -179,7 +180,8 @@ fn build_site(root: &Path, config: &Config, settings: &ResolvedBuild) -> Result<
     )?;
     let asset_base = format!("{}{}", config.base_path, assets.base);
     let site_root = format!("{}/", config.base_path);
-    copy_public(&public_root, public, stage)?;
+    copy_public(&public_root, public, stage, &mut content.output_cases)?;
+    drop(content.output_cases);
     let mut sitemap = String::from(
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\" xmlns:xhtml=\"http://www.w3.org/1999/xhtml\">\n",
     );
@@ -281,7 +283,12 @@ fn build_site(root: &Path, config: &Config, settings: &ResolvedBuild) -> Result<
 }
 
 /// Copy the validated public inventory without transforming its bytes.
-fn copy_public(root: &Path, sources: Vec<PathBuf>, stage: &Path) -> Result<()> {
+fn copy_public(
+    root: &Path,
+    sources: Vec<PathBuf>,
+    stage: &Path,
+    output_cases: &mut PathCases,
+) -> Result<()> {
     for source in sources {
         let name = source
             .strip_prefix(root)
@@ -290,9 +297,13 @@ fn copy_public(root: &Path, sources: Vec<PathBuf>, stage: &Path) -> Result<()> {
             .expect("files validates UTF-8 paths")
             .replace(std::path::MAIN_SEPARATOR, "/");
         ensure!(
-            name.split('/').next() != Some("assets"),
+            !name
+                .split('/')
+                .next()
+                .is_some_and(|part| part.eq_ignore_ascii_case("assets")),
             "public/assets is reserved for versioned assets"
         );
+        output_cases.insert(&name)?;
         std::io::copy(&mut File::open(&source)?, &mut output_file(stage, &name)?)?;
     }
     Ok(())

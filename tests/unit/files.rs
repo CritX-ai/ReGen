@@ -368,11 +368,11 @@ fn symlinked_ancestors_cannot_redirect_text_reads_or_output_creation() {
 #[test]
 fn inventories_reject_nonportable_descendants_instead_of_silently_omitting_them() {
     let temp = tempdir();
-    fs::create_dir(temp.path().join("Invalid")).unwrap();
-    fs::write(temp.path().join("Invalid/source.txt"), b"required source").unwrap();
+    fs::create_dir(temp.path().join(".hidden")).unwrap();
+    fs::write(temp.path().join(".hidden/source.txt"), b"required source").unwrap();
     assert!(super::files(temp.path(), false).is_err());
     assert_eq!(
-        fs::read(temp.path().join("Invalid/source.txt")).unwrap(),
+        fs::read(temp.path().join(".hidden/source.txt")).unwrap(),
         b"required source"
     );
 }

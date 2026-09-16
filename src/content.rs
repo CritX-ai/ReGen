@@ -13,12 +13,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::config::Config;
-use crate::files::{portable_path, read_text, visit_tree};
+use crate::files::{PathCases, portable_path, read_text, visit_tree};
 
 /// Complete translation set, validated for cross-locale IDs and route uniqueness.
 pub(crate) struct Content {
     /// All configured locales, keyed by language code.
     pub localized: BTreeMap<String, Localized>,
+    /// Authored output spellings, shared with public files before any path can alias.
+    pub output_cases: PathCases,
 }
 
 /// Authored content for one language.
@@ -72,6 +74,13 @@ impl Content {
             })
             .collect();
         let mut routes: BTreeMap<String, &Path> = BTreeMap::new();
+        let mut output_cases = PathCases::default();
+        output_cases
+            .insert("sitemap.xml")
+            .expect("fixed sitemap name is portable and unique");
+        output_cases
+            .insert("regen-manifest.json")
+            .expect("fixed manifest name is portable and distinct");
         for path in &paths {
             // The inventory guarantees portable UTF-8 paths in configured locales:
             // site.yaml or files beneath pages/. Page extensions are checked below.
@@ -105,14 +114,21 @@ impl Content {
                 && let Some(first) = page.slug.split('/').next()
             {
                 ensure!(
-                    !matches!(first, "assets" | "sitemap.xml" | "regen-manifest.json")
-                        && !language_codes.contains(first),
+                    !["assets", "sitemap.xml", "regen-manifest.json"]
+                        .iter()
+                        .any(|reserved| first.eq_ignore_ascii_case(reserved))
+                        && !language_codes
+                            .iter()
+                            .any(|code| first.eq_ignore_ascii_case(code)),
                     "{}: slug {:?} conflicts with a reserved root namespace",
                     path.display(),
                     page.slug
                 );
             }
             let page_route = route(code, &config.site.default_language, &page.slug);
+            output_cases
+                .insert(&format!("{}index.html", page_route.trim_start_matches('/')))
+                .with_context(|| format!("invalid output path for {}", path.display()))?;
             match routes.entry(page_route) {
                 Entry::Vacant(entry) => {
                     entry.insert(path);
@@ -161,7 +177,10 @@ impl Content {
                 );
             }
         }
-        Ok(Self { localized })
+        Ok(Self {
+            localized,
+            output_cases,
+        })
     }
 }
 
@@ -265,7 +284,8 @@ fn page_id(path: &Path) -> Result<String> {
         id.push_str(segment);
     }
     ensure!(
-        id.ends_with(".yaml"),
+        path.extension()
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("yaml")),
         "page files must have the .yaml extension"
     );
     id.truncate(id.len() - ".yaml".len());
@@ -314,7 +334,9 @@ fn read_page(path: &Path, id: &str) -> Result<Page> {
 fn validate_page(page: &Page) -> Result<()> {
     portable_path(&page.template).context("template must be a portable relative path")?;
     ensure!(
-        page.template.ends_with(".html"),
+        Path::new(&page.template)
+            .extension()
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("html")),
         "template must have the .html extension"
     );
     if !page.slug.is_empty() {

@@ -101,6 +101,8 @@ class Document(HTMLParser):
         self.diagrams = []
         self.in_style = False
         self.style_text = []
+        self.scripts = []
+        self.current_script = None
         self.frames = []
         self.poem_sources = []
         self.poem_controls = []
@@ -127,7 +129,13 @@ class Document(HTMLParser):
             self.poem_elements.append(element)
             if tag not in VOID_ELEMENTS:
                 self.poem_stack.append(element)
-        require(tag not in {"script", "object", "embed", "base"}, f"unexpected active element {tag}: {self.name}")
+        require(tag not in {"object", "embed", "base"}, f"unexpected active element {tag}: {self.name}")
+        if tag == "script":
+            expected = ({"id": "docs-search-index", "type": "application/json"}
+                        if attrs.get("id") == "docs-search-index" else {"id": "docs-search-script"})
+            require(attrs == expected, f"only embedded documentation search scripts are allowed: {self.name}")
+            self.current_script = {"attrs": attrs, "text": []}
+            self.scripts.append(self.current_script)
         if tag == "iframe":
             require(self.name in POEM_HOSTS
                     and set(attrs) <= {"src", "title", "sandbox", "loading", "referrerpolicy"}
@@ -185,6 +193,8 @@ class Document(HTMLParser):
         self.handle_endtag(tag)
 
     def handle_endtag(self, tag):
+        if tag == "script":
+            self.current_script = None
         if self.poem_stack and self.poem_stack[-1]["tag"] == tag:
             self.poem_stack.pop()["end"] = self.element_order
         if tag == "style":
@@ -198,6 +208,8 @@ class Document(HTMLParser):
             self.current_poem_source = None
 
     def handle_data(self, data):
+        if self.current_script is not None:
+            self.current_script["text"].append(data)
         for element in self.poem_stack:
             element["text"] += data
         if self.current_poem_source is not None and self.poem_link_open:
@@ -425,6 +437,45 @@ class Site:
                     and caption["links"] == [url] and caption["text"].strip() == url,
                     f"each site poem must precede its matching visible URL in its language panel: {name}")
 
+    def check_search(self, docs):
+        titles = {
+            self.url((page["slug"] + "/" if page["slug"] else "") + "index.html"): page["title"]
+            for page in docs
+        }
+        shared_index = None
+        shared_script = None
+        for name, document in self.documents.items():
+            if self.url(name) not in titles:
+                require(not document.scripts, f"unexpected search scripts outside documentation: {name}")
+                continue
+            require([script["attrs"]["id"] for script in document.scripts]
+                    == ["docs-search-index", "docs-search-script"], f"missing embedded search: {name}")
+            index = json.loads("".join(document.scripts[0]["text"]))
+            script = "".join(document.scripts[1]["text"])
+            require(isinstance(index, list) and index and script.strip(), f"empty embedded search: {name}")
+            if shared_index is None:
+                shared_index, shared_script = index, script
+            else:
+                require(index == shared_index and script == shared_script,
+                        f"documentation pages have inconsistent search: {name}")
+                continue
+            indexed_pages = set()
+            indexed_urls = set()
+            for entry in index:
+                require(isinstance(entry, dict) and set(entry) == {"title", "heading", "url", "text"}
+                        and all(isinstance(value, str) for value in entry.values()),
+                        f"invalid search entry: {name}")
+                resolved = urlsplit(urljoin(self.url(name), entry["url"]))
+                page_url = resolved._replace(fragment="").geturl()
+                require(not resolved.query and page_url in titles
+                        and entry["title"] == titles[page_url], f"search target outside documentation: {entry['url']}")
+                require(entry["url"] not in indexed_urls and (entry["heading"].strip() or entry["text"].strip()),
+                        f"empty or repeated search section: {entry['url']}")
+                self.local_link(name, entry["url"])
+                indexed_urls.add(entry["url"])
+                indexed_pages.add(page_url)
+            require(indexed_pages == set(titles), "search does not cover every documentation page")
+
     def check(self, docs, version):
         self.check_manifests(version)
         animated = (self.root / "brand/regen-logo.svg").read_text(encoding="utf-8")
@@ -433,6 +484,7 @@ class Site:
         expected_docs = {(page["slug"] + "/" if page["slug"] else "") + "index.html" for page in docs}
         require(set(self.documents) == expected_docs | set(POEM_ROUTES), "unexpected or missing documentation/poem page")
         self.check_resources()
+        self.check_search(docs)
         require("build-topology" in self.documents["index.html"].ids,
                 "homepage is missing its pipeline overview")
         wordmarks = {self.base_url + "brand/" + name for name in ("regen-logo.svg", "regen-logo-static.svg")}

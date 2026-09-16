@@ -149,9 +149,17 @@ Page IDs use the path relative to `pages/`, without `.yaml`, and must match acro
 - `index.yaml` has no special status: omitting its slug produces `/index/`. Use `slug: ""` for the home page.
 - Defaulted and explicit slugs undergo the same collision and reserved-route checks.
 
-Content paths and slug segments use portable lowercase ASCII: no traversal, leading dots, Windows device names or trailing dots. Unicode is welcome in text.
-
 `site.yaml` and `data` must be string-keyed, JSON-compatible mappings; use `{}` for an empty `site.yaml`. Arbitrary YAML objects, duplicate keys, unknown typed fields, YAML includes, extra content files, symlinks and output collisions are errors. See the [authoring examples](guide.md#localized-yaml).
+
+### Paths and filenames
+
+ReGen preserves ASCII case in filenames, folders and slugs: `public/CNAME`, `assets/fonts/OFL.txt` and `/About/` keep their spelling. Match it in template references, includes and HTML/CSS links.
+
+- Use letters (`A–Z`, `a–z`), digits, `-`, `_` and `.`; `/` separates folders. Leading/trailing dots, traversal and Windows device names such as `CON` or `COM1.txt` are rejected.
+- Names must also be unique when compared without case. `Guide/one` and `guide/two` conflict at the folder level, even though their last segments differ. These checks keep the output consistent on case-sensitive and case-insensitive filesystems.
+- File types recognize `.yaml`, `.html`, `.css`, `.js` and `.mjs` regardless of extension case. Required layout names such as `regen.toml`, `site.yaml` and `pages/` retain their documented spelling. [Language codes](#languages--languages) have their own lowercase format.
+
+Unicode is welcome in page text and metadata.
 
 ### Profiles and precedence
 
@@ -195,7 +203,7 @@ Precedence is **built-in defaults → common build tables → ancestors, oldest 
 
 Fields inherit individually; a partial option table does not reset its siblings. Explicit `unused_symbols`, `pre` and `post` arrays replace their respective inherited arrays. `[]` clears one without affecting the others.
 
-Profile names are single portable lowercase ASCII segments: letters, digits, `-`, `_`, `.`; no empty names, leading/trailing dots, traversal or Windows device names. Unknown parents, cycles and invalid `[build].profile` fail even when another profile is selected. All hook declarations are validated; compiled-in features are checked only against effective settings.
+Profile names are case-sensitive, single [portable path segments](#paths-and-filenames). Unknown parents, cycles and invalid `[build].profile` fail even when another profile is selected. All hook declarations are validated; compiled-in features are checked only against effective settings.
 
 <details>
 <summary>Profile example</summary>

@@ -160,7 +160,7 @@ fn release_compacts_css_but_html_and_javascript_require_explicit_opt_in() {
             cfg!(feature = "minify-js"),
         ),
         (
-            "module.mjs",
+            "module.MJS",
             "export const response = await Promise.resolve(42);\n",
             cfg!(feature = "minify-js"),
         ),
@@ -507,6 +507,158 @@ fn omitted_slug_collisions_and_reserved_routes_preserve_the_installed_site() {
             .unwrap();
         }
     }
+}
+
+#[test]
+fn authored_case_survives_routes_templates_public_files_and_asset_versioning() {
+    let site = fixture();
+    let root = site.path();
+    fs::create_dir(root.join("templates/Views")).unwrap();
+    fs::write(
+        root.join("templates/Views/Page.HtML"),
+        "<!doctype html><title>{{ page.title }}</title><main data-slug=\"{{ page.slug }}\">{{ current_path }}</main>\
+         {% for item in navigation %}<a href=\"{{ item.path }}\">{{ item.title }}</a>{% endfor %}\
+         {% for item in alternates %}<link hreflang=\"{{ item.code }}\" href=\"{{ item.url }}\">{% endfor %}",
+    )
+    .unwrap();
+    for language in ["en", "de"] {
+        let pages = root.join("content").join(language).join("pages");
+        fs::create_dir(pages.join("Guides")).unwrap();
+        fs::remove_file(pages.join("about.yaml")).unwrap();
+        fs::write(
+            pages.join("Guides/About.YAML"),
+            format!(
+                "title: '<b>Case</b>'\ndescription: Authored names\ntemplate: Views/Page.HtML\n{}",
+                if language == "en" {
+                    ""
+                } else {
+                    "slug: Ueber\n"
+                }
+            ),
+        )
+        .unwrap();
+    }
+    fs::create_dir(root.join("assets/Fonts")).unwrap();
+    fs::write(root.join("assets/Fonts/OFL.txt"), b"original font notice\n").unwrap();
+    fs::write(root.join("public/CNAME"), b"example.com\n").unwrap();
+    let config = fs::read_to_string(root.join("regen.toml")).unwrap();
+    fs::write(
+        root.join("regen.toml"),
+        format!("{config}\n[profiles.Preview]\nextends = \"release\"\n"),
+    )
+    .unwrap();
+    let options = regen::BuildOptions {
+        profile: Some("Preview"),
+        ..Default::default()
+    };
+    regen::build_with_options(root, &options).unwrap();
+    let output = root.join("dist");
+    let english = fs::read_to_string(output.join("About/index.html")).unwrap();
+    assert!(english.contains("&lt;b&gt;Case&lt;/b&gt;"));
+    assert!(english.contains("data-slug=\"About\""));
+    assert!(english.contains("href=\"/About/\""));
+    assert!(english.contains("href=\"https://example.com/de/Ueber/\""));
+    let german = fs::read_to_string(output.join("de/Ueber/index.html")).unwrap();
+    assert!(german.contains("href=\"https://example.com/About/\""));
+    assert_eq!(fs::read(output.join("CNAME")).unwrap(), b"example.com\n");
+    let inventory = snapshot(&output);
+    let notice = inventory
+        .iter()
+        .find(|(path, _)| path.starts_with("assets") && path.ends_with("Fonts/OFL.txt"))
+        .unwrap();
+    assert_eq!(notice.1, b"original font notice\n");
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&inventory[Path::new("regen-manifest.json")]).unwrap();
+    assert!(manifest["files"].as_object().unwrap().contains_key("CNAME"));
+    assert!(
+        manifest["files"]
+            .as_object()
+            .unwrap()
+            .contains_key("About/index.html")
+    );
+    regen::build_with_options(root, &options).unwrap();
+    assert_eq!(inventory, snapshot(&output));
+}
+
+#[test]
+fn differently_cased_output_directories_cannot_merge_on_any_host() {
+    let site = fixture();
+    let root = site.path();
+    for language in ["en", "de"] {
+        let pages = root.join("content").join(language).join("pages");
+        let source = fs::read_to_string(pages.join("about.yaml")).unwrap();
+        fs::write(
+            pages.join("other.yaml"),
+            source.replace(
+                if language == "en" {
+                    "slug: about"
+                } else {
+                    "slug: ueber"
+                },
+                "slug: Guide/second",
+            ),
+        )
+        .unwrap();
+    }
+    replace(
+        root,
+        "content/en/pages/about.yaml",
+        "slug: about",
+        "slug: Guide/first",
+    );
+    regen::build(root).unwrap();
+    let previous = snapshot(&root.join("dist"));
+    replace(
+        root,
+        "content/en/pages/other.yaml",
+        "slug: Guide/second",
+        "slug: guide/second",
+    );
+    assert_rejected_without_replacement(root, &previous);
+    replace(
+        root,
+        "content/en/pages/other.yaml",
+        "slug: guide/second",
+        "slug: Guide/second",
+    );
+    fs::create_dir(root.join("public/guide")).unwrap();
+    fs::write(root.join("public/guide/readme.txt"), b"separate leaf").unwrap();
+    assert_rejected_without_replacement(root, &previous);
+    fs::remove_dir_all(root.join("public/guide")).unwrap();
+    fs::write(root.join("public/ReGen-Manifest.JSON"), b"foreign marker").unwrap();
+    assert_rejected_without_replacement(root, &previous);
+}
+
+#[test]
+fn distinct_asset_names_that_fold_to_the_same_path_are_rejected() {
+    use std::io::Write;
+
+    let site = fixture();
+    let root = site.path();
+    fs::write(root.join("assets/Logo.svg"), b"original logo").unwrap();
+    regen::build(root).unwrap();
+    let previous = snapshot(&root.join("dist"));
+    let mut alias = match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(root.join("assets/logo.svg"))
+    {
+        Ok(file) => file,
+        // This filesystem already prevents representing the ambiguous input.
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => return,
+        Err(error) => panic!("cannot create case-alias fixture: {error}"),
+    };
+    alias.write_all(b"conflicting logo").unwrap();
+    drop(alias);
+    assert_rejected_without_replacement(root, &previous);
+    assert_eq!(
+        fs::read(root.join("assets/Logo.svg")).unwrap(),
+        b"original logo"
+    );
+    assert_eq!(
+        fs::read(root.join("assets/logo.svg")).unwrap(),
+        b"conflicting logo"
+    );
 }
 
 #[test]
@@ -916,7 +1068,7 @@ fn ambiguous_yaml_and_unsafe_routes_are_rejected() {
         site.path(),
         "content/en/pages/about.yaml",
         "slug: ../escape",
-        "slug: de",
+        "slug: DE",
     );
     assert!(regen::build(site.path()).is_err());
 }
@@ -940,23 +1092,20 @@ fn reserved_root_slugs_do_not_restrict_localized_pages() {
         site.path(),
         "content/en/pages/about.yaml",
         "slug: about",
-        "slug: assets",
+        "slug: Assets",
     );
     assert_rejected_without_replacement(site.path(), &previous);
 }
 
 #[test]
-fn asset_file_names_cannot_alias_windows_devices_or_case_variants() {
+fn asset_file_names_cannot_alias_windows_devices() {
     let site = fixture();
-    for name in ["con.txt", "com1.txt", "lpt9.txt"] {
+    for name in ["con.txt", "CoM1.txt", "LPT9.txt"] {
         let path = site.path().join("assets").join(name);
         fs::write(&path, "reserved").unwrap();
         assert!(regen::build(site.path()).is_err());
         fs::remove_file(path).unwrap();
     }
-    fs::write(site.path().join("assets/Upper.css"), "body {}").unwrap();
-    assert!(regen::build(site.path()).is_err());
-    fs::remove_file(site.path().join("assets/Upper.css")).unwrap();
     fs::write(site.path().join("assets/com0.txt"), "portable").unwrap();
     fs::write(site.path().join("assets/lpt10.txt"), "portable").unwrap();
     regen::build(site.path()).unwrap();
@@ -1794,7 +1943,7 @@ fn javascript_minification_preserves_public_bindings_and_rejects_invalid_assets_
     )
     .unwrap();
     fs::write(
-        site.path().join("assets/async.mjs"),
+        site.path().join("assets/async.MJS"),
         "export const response = await Promise.resolve(42);\n",
     )
     .unwrap();
@@ -1828,7 +1977,7 @@ fn javascript_minification_preserves_public_bindings_and_rejects_invalid_assets_
     let asynchronous = std::str::from_utf8(
         assets
             .iter()
-            .find(|(name, _)| name.ends_with("async.mjs"))
+            .find(|(name, _)| name.ends_with("async.MJS"))
             .unwrap()
             .1,
     )

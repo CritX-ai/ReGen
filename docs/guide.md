@@ -66,7 +66,7 @@ de/pages/about.yaml  → slug: ueber → /de/ueber/
 
 Every language needs the same page IDs and one home page with `slug: ""`; missing translations fail. `title`, `description` and `template` are required. `slug` is an optional string, not `null`; `data` is a mapping and defaults to `{}`.
 
-Put shared localized strings in each language's `site.yaml` (or `{}` when empty). Use portable lowercase ASCII paths; Unicode belongs in the text.
+Put shared localized strings in each language's `site.yaml` (or `{}` when empty). Use [portable ASCII filenames](reference.md#paths-and-filenames) with consistent case; Unicode is welcome in the text.
 
 <details>
 <summary>Nested pages and rejected inputs</summary>

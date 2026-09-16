@@ -3,9 +3,9 @@
 ## 1.1.0
 
 - Build profiles, separate review output and tunable HTML/CSS/JavaScript minification, with enforced or warning-only regression checks.
-- Opt-in pre/post-build hooks and filename-based slugs when `slug` is omitted.
+- Opt-in pre/post-build hooks, case-preserving paths and filename-based slugs when `slug` is omitted.
 - `cargo-binstall` support, downloadable bilingual examples and release-tagged containers.
-- Clearer guides, deployment examples and source-linked architecture and dependency views.
+- Embedded documentation search, deployment examples and source-linked architecture and dependency views.
 - Broader platform, feature, packaging and release checks.
 
 ## 1.0.0

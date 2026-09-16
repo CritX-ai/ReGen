@@ -77,7 +77,13 @@ fn public_copy_preserves_nested_binary_and_empty_files_without_changing_sources(
     fs::write(source.path().join("empty.txt"), b"").unwrap();
     let inventory = crate::files::files(source.path(), false).unwrap();
 
-    copy_public(source.path(), inventory, stage.path()).unwrap();
+    copy_public(
+        source.path(),
+        inventory,
+        stage.path(),
+        &mut Default::default(),
+    )
+    .unwrap();
 
     assert_eq!(
         fs::read(stage.path().join("nested/raw.bin")).unwrap(),
@@ -98,7 +104,15 @@ fn public_copy_refuses_to_truncate_an_existing_destination() {
     fs::write(source.path().join("keep.txt"), b"new source").unwrap();
     fs::write(stage.path().join("keep.txt"), b"existing output").unwrap();
     let inventory = crate::files::files(source.path(), false).unwrap();
-    assert!(copy_public(source.path(), inventory, stage.path()).is_err());
+    assert!(
+        copy_public(
+            source.path(),
+            inventory,
+            stage.path(),
+            &mut Default::default()
+        )
+        .is_err()
+    );
     assert_eq!(
         fs::read(stage.path().join("keep.txt")).unwrap(),
         b"existing output"
@@ -115,7 +129,13 @@ fn public_copy_propagates_a_real_kernel_read_failure() {
     assert!(fs::symlink_metadata(&source).unwrap().is_file());
     let site = tempdir();
     let transaction = crate::files::Transaction::begin(site.path(), "dist").unwrap();
-    let error = copy_public(&root, vec![source], transaction.stage()).unwrap_err();
+    let error = copy_public(
+        &root,
+        vec![source],
+        transaction.stage(),
+        &mut Default::default(),
+    )
+    .unwrap_err();
     assert_eq!(
         error
             .downcast_ref::<std::io::Error>()
@@ -142,7 +162,12 @@ fn unreadable_files_cannot_be_copied_or_recorded_in_a_successful_manifest() {
     // Privileged runners may bypass mode bits; assert the observed capability
     // instead of assuming chmod necessarily makes this file unreadable.
     let readable = File::open(&path).is_ok();
-    let copied = copy_public(source.path(), inventory, stage.path());
+    let copied = copy_public(
+        source.path(),
+        inventory,
+        stage.path(),
+        &mut Default::default(),
+    );
     let manifest = write_manifest(source.path(), "release", false);
     if readable {
         copied.unwrap();

@@ -26,6 +26,11 @@ name = "English"
 }
 
 #[test]
+fn language_directory_names_reject_windows_devices_even_when_bcp47_syntax_is_valid() {
+    assert!(load("[[languages]]\ncode = 'con'\nname = 'Cofán'").is_err());
+}
+
+#[test]
 fn profile_ancestry_overlays_common_settings_then_leaf_then_invocation() {
     let config = load(
         r#"
@@ -189,7 +194,7 @@ fn invalid_inactive_ancestry_and_invalid_default_cannot_hide_behind_cli_selectio
 
 #[test]
 fn profile_names_are_single_portable_components_even_when_unused() {
-    for name in ["", "a/b", "../outside", "Preview", "nul", "trailing.", "é"] {
+    for name in ["", "a/b", "../outside", "nul", "trailing.", "é"] {
         let config = load(&format!("[profiles.{name:?}]")).unwrap();
         assert!(config.resolve_build(&BuildOptions::default()).is_err());
     }

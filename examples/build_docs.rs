@@ -18,6 +18,7 @@ use std::path::{Component, Path, PathBuf};
 use anyhow::{Context, Result, bail, ensure};
 use clap::Parser as _;
 use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, TagEnd, html};
+use scraper::{ElementRef, Html, Node};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use url::Url;
@@ -83,6 +84,22 @@ struct DocPage {
     slug: String,
     title: String,
     group: MenuGroup,
+}
+
+/// Decoded section content, embedded in every documentation page rather than fetched.
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+struct SearchEntry {
+    title: String,
+    heading: String,
+    url: String,
+    text: String,
+}
+
+struct RenderedMarkdown {
+    body_html: String,
+    toc: Vec<serde_json::Value>,
+    heading_id: String,
+    introduction_html: String,
 }
 
 fn main() -> Result<()> {
@@ -182,6 +199,7 @@ fn build(arguments: Arguments, options: &regen::BuildOptions<'_>) -> Result<()> 
         "pipeline.html",
         "architecture.html",
         "poem-example.html",
+        "search.html",
     ] {
         copy_source(
             repository,
@@ -253,18 +271,7 @@ fn build(arguments: Arguments, options: &regen::BuildOptions<'_>) -> Result<()> 
             json!({"title": group, "items": items})
         })
         .collect();
-    write_json(
-        &docs_root.join("content/en/site.yaml"),
-        &json!({
-            "menu": menu,
-            "repository_url": REPOSITORY_URL,
-            "cargo": cargo_metadata(repository)?,
-            "poem_en_url": format!("{poem_canonical}/"),
-            "poem_de_url": format!("{poem_canonical}/de/"),
-            "poem_en_source": poem_source(&poem_root, "content/en/pages/index.yaml")?,
-            "poem_de_source": poem_source(&poem_root, "content/de/pages/index.yaml")?
-        }),
-    )?;
+    let mut search_index = Vec::new();
     for page in &pages {
         let mut source = read_source(repository, &page.source)?;
         if page.source == "docs/license.md" {
@@ -272,7 +279,20 @@ fn build(arguments: Arguments, options: &regen::BuildOptions<'_>) -> Result<()> 
             let license = read_source(repository, "LICENSE")?;
             write!(source, "\n## WTFPL v2\n\n```text\n{license}\n```\n")?;
         }
-        let (body_html, toc, heading_id) = render_markdown(&source, page, repository, &routes)?;
+        let RenderedMarkdown {
+            body_html,
+            toc,
+            heading_id,
+            introduction_html,
+        } = render_markdown(&source, page, repository, &routes)?;
+        for html in [&introduction_html, &body_html] {
+            search_index.extend(search_sections(
+                page,
+                &routes[page.source.as_str()],
+                &heading_id,
+                html,
+            ));
+        }
         let id = if page.slug.is_empty() {
             "index"
         } else {
@@ -294,6 +314,19 @@ fn build(arguments: Arguments, options: &regen::BuildOptions<'_>) -> Result<()> 
             }),
         )?;
     }
+    write_json(
+        &docs_root.join("content/en/site.yaml"),
+        &json!({
+            "menu": menu,
+            "search_index": script_safe_search_index(&search_index)?,
+            "repository_url": REPOSITORY_URL,
+            "cargo": cargo_metadata(repository)?,
+            "poem_en_url": format!("{poem_canonical}/"),
+            "poem_de_url": format!("{poem_canonical}/de/"),
+            "poem_en_source": poem_source(&poem_root, "content/en/pages/index.yaml")?,
+            "poem_de_source": poem_source(&poem_root, "content/de/pages/index.yaml")?
+        }),
+    )?;
     let documentation = regen::build_with_options(&docs_root, options)
         .context("cannot build prepared documentation")?;
 
@@ -329,7 +362,7 @@ fn ensure_absent(path: &Path) -> Result<()> {
 
 /// Resolve normal relative components beneath a trusted, stable root without links.
 ///
-/// Repository file names are not subject to the generator's lowercase URL alphabet.
+/// Repository links may name paths such as `.github/` outside the site's input rules.
 /// This does not protect against concurrent replacement after inspection.
 fn source_path(root: &Path, relative: &str) -> Result<PathBuf> {
     let mut path = root.to_path_buf();
@@ -536,7 +569,7 @@ fn render_markdown(
     page: &DocPage,
     repository: &Path,
     routes: &BTreeMap<&str, String>,
-) -> Result<(String, Vec<serde_json::Value>, String)> {
+) -> Result<RenderedMarkdown> {
     let options =
         Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TASKLISTS;
     let mut events: Vec<_> = Parser::new_ext(source, options).collect();
@@ -610,8 +643,15 @@ fn render_markdown(
             *anchor = Some(id.into());
         }
     }
+    let mut introduction_html = String::new();
     if let Some(start) = body_start {
-        events.drain(..start);
+        let mut introduction: Vec<_> = events.drain(..start).collect();
+        if let Some((start, end)) = first_h1.filter(|&(_, end)| end < start) {
+            introduction.drain(start..=end);
+        }
+        // The homepage template replaces this visible introduction, but search
+        // still uses the README's authored prose, not a separately copied summary.
+        html::push_html(&mut introduction_html, introduction.into_iter());
     } else if let Some((start, end)) = first_h1 {
         events.drain(start..=end);
     }
@@ -645,7 +685,162 @@ fn render_markdown(
         [before, Some(event), after].into_iter().flatten()
     });
     html::push_html(&mut output, events);
-    Ok((output, toc, heading_id))
+    Ok(RenderedMarkdown {
+        body_html: output,
+        toc,
+        heading_id,
+        introduction_html,
+    })
+}
+
+/// Partition the rendered HTML in source order, assigning each text node once.
+/// The removed H1 is rendered by the page template and anchors the introduction.
+fn search_sections(page: &DocPage, path: &str, heading_id: &str, html: &str) -> Vec<SearchEntry> {
+    if html.is_empty() {
+        return Vec::new();
+    }
+    let document = Html::parse_fragment(html);
+    let mut entries = vec![search_entry(page, path, &page.title, heading_id)];
+    let mut current = 0;
+    append_search_content(
+        document.root_element(),
+        page,
+        path,
+        &mut entries,
+        &mut current,
+    );
+    for entry in &mut entries {
+        entry.text = normalize_search_text(&entry.text);
+    }
+    // Only the synthetic introduction may be empty; authored headings remain searchable.
+    if entries[0].text.is_empty() {
+        entries.remove(0);
+    }
+    entries
+}
+
+fn search_entry(page: &DocPage, path: &str, heading: &str, id: &str) -> SearchEntry {
+    // Encode the ID, not the route: even literal '%' or '#' in authored IDs must
+    // survive the browser's fragment decoding without changing the target.
+    let mut url = String::with_capacity(path.len() + id.len() + 1);
+    url.push_str(path);
+    url.push('#');
+    for byte in id.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
+            url.push(char::from(byte));
+        } else {
+            write!(url, "%{byte:02X}").expect("writing to a String cannot fail");
+        }
+    }
+    SearchEntry {
+        title: page.title.clone(),
+        heading: normalize_search_text(heading),
+        url,
+        text: String::new(),
+    }
+}
+
+fn append_search_content(
+    element: ElementRef<'_>,
+    page: &DocPage,
+    path: &str,
+    entries: &mut Vec<SearchEntry>,
+    current: &mut usize,
+) {
+    let name = element.value().name();
+    if matches!(name, "script" | "style" | "template" | "nav") {
+        return;
+    }
+    let heading = matches!(name, "h1" | "h2" | "h3" | "h4" | "h5" | "h6");
+    let parent = *current;
+    let anchored_details = name == "details" && element.attr("id").is_some();
+    if let Some(id) = element.attr("id").filter(|id| !id.is_empty())
+        && (heading || anchored_details)
+    {
+        let title = if heading {
+            element.text().collect::<String>()
+        } else {
+            element
+                .child_elements()
+                .find(|child| child.value().name() == "summary")
+                .map(|summary| summary.text().collect::<String>())
+                .unwrap_or_else(|| entries[*current].heading.clone())
+        };
+        *current = entries.len();
+        entries.push(search_entry(page, path, &title, id));
+        if heading {
+            return;
+        }
+    }
+    let block = heading
+        || matches!(
+            name,
+            "p" | "div"
+                | "section"
+                | "article"
+                | "blockquote"
+                | "pre"
+                | "ul"
+                | "ol"
+                | "li"
+                | "dl"
+                | "dt"
+                | "dd"
+                | "table"
+                | "thead"
+                | "tbody"
+                | "tfoot"
+                | "tr"
+                | "td"
+                | "th"
+                | "details"
+                | "summary"
+                | "br"
+                | "hr"
+        );
+    if block {
+        entries[*current].text.push(' ');
+    }
+    for child in element.children() {
+        if let Node::Text(text) = child.value() {
+            entries[*current].text.push_str(text);
+        } else if let Some(child) = ElementRef::wrap(child) {
+            append_search_content(child, page, path, entries, current);
+        }
+    }
+    if block {
+        entries[*current].text.push(' ');
+    }
+    if name == "details" {
+        // A disclosure's nested headings must not capture prose that follows it.
+        *current = parent;
+    }
+}
+
+fn normalize_search_text(text: &str) -> String {
+    let mut normalized = String::with_capacity(text.len());
+    for word in text.split_whitespace() {
+        if !normalized.is_empty() {
+            normalized.push(' ');
+        }
+        normalized.push_str(word);
+    }
+    normalized
+}
+
+/// JSON remains data even when authored code contains HTML script delimiters.
+fn script_safe_search_index(entries: &[SearchEntry]) -> Result<String> {
+    let json = serde_json::to_string(entries)?;
+    let mut safe = String::with_capacity(json.len());
+    for character in json.chars() {
+        match character {
+            '<' => safe.push_str("\\u003c"),
+            '\u{2028}' => safe.push_str("\\u2028"),
+            '\u{2029}' => safe.push_str("\\u2029"),
+            _ => safe.push(character),
+        }
+    }
+    Ok(safe)
 }
 
 /// Resolve authored relative links to published routes or existing repository targets.
@@ -746,6 +941,162 @@ mod tests {
             "examples/minimal/assets/site.css",
         ),
     ];
+
+    #[test]
+    fn search_preserves_anchors_and_partitions_nested_disclosures() -> Result<()> {
+        let page = DocPage {
+            source: "docs/reference.md".to_owned(),
+            slug: "reference".to_owned(),
+            title: "Reference".to_owned(),
+            group: MenuGroup::Learn,
+        };
+        let path = route("/regen", &page.slug);
+        let source = r#"# Reference
+
+Introduction.
+
+## Options
+
+Before.
+
+<details id="advanced%options">
+<summary>Advanced &amp; nested</summary>
+<table><tr><th>Option</th><th>Value</th></tr><tr><td><code>minify_<span>js</span></code></td><td>false</td></tr></table>
+<details><summary>More</summary><pre><code>--review &lt;path&gt;</code></pre><h4 id="nested">Nested</h4><p>Nested text.</p></details>
+</details>
+
+After.
+
+## Grouped controls
+
+### Child
+
+Child text.
+
+## Options
+
+Second.
+"#;
+        let rendered = render_markdown(
+            source,
+            &page,
+            Path::new(env!("CARGO_MANIFEST_DIR")),
+            &BTreeMap::new(),
+        )?;
+        let entries = search_sections(&page, &path, &rendered.heading_id, &rendered.body_html);
+        let sections: Vec<_> = entries
+            .iter()
+            .map(|entry| {
+                (
+                    entry.heading.as_str(),
+                    entry.url.as_str(),
+                    entry.text.as_str(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            sections,
+            [
+                ("Reference", "/regen/reference/#reference", "Introduction."),
+                ("Options", "/regen/reference/#options", "Before. After."),
+                (
+                    "Advanced & nested",
+                    "/regen/reference/#advanced%25options",
+                    "Advanced & nested Option Value minify_js false More --review <path>",
+                ),
+                ("Nested", "/regen/reference/#nested", "Nested text."),
+                ("Grouped controls", "/regen/reference/#grouped-controls", ""),
+                ("Child", "/regen/reference/#child", "Child text."),
+                ("Options", "/regen/reference/#options-1", "Second."),
+            ]
+        );
+        let document = Html::parse_fragment(&rendered.body_html);
+        for entry in &entries {
+            let (_, fragment) = entry
+                .url
+                .split_once('#')
+                .context("missing search fragment")?;
+            let id = decode_path(fragment)?;
+            assert!(
+                id == rendered.heading_id
+                    || document
+                        .root_element()
+                        .descendent_elements()
+                        .any(|element| element.attr("id") == Some(id.as_str()))
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn search_json_cannot_close_its_script_element() -> Result<()> {
+        let page = DocPage {
+            source: "docs/reference.md".to_owned(),
+            slug: "reference".to_owned(),
+            title: "Reference".to_owned(),
+            group: MenuGroup::Learn,
+        };
+        let entries = search_sections(
+            &page,
+            "/reference/",
+            "reference",
+            "<pre><code>&lt;/ScRiPt&gt;&lt;script&gt;alert(1)&lt;/script&gt; &lt;!-- \u{2028}\u{2029}</code></pre>",
+        );
+        assert_eq!(entries[0].text, "</ScRiPt><script>alert(1)</script> <!--");
+        let mut entries = entries;
+        entries[0].heading.push_str("\u{2028}\u{2029}");
+        let json = script_safe_search_index(&entries)?;
+        assert!(!json.contains(['<', '\u{2028}', '\u{2029}']));
+        assert_eq!(serde_json::from_str::<Vec<SearchEntry>>(&json)?, entries);
+        let document = Html::parse_fragment(&format!(
+            "<script id=\"index\" type=\"application/json\">{json}</script><p id=\"after\">After</p>"
+        ));
+        let scripts = scraper::Selector::parse("script").expect("valid selector");
+        assert_eq!(document.select(&scripts).count(), 1);
+        assert_eq!(
+            document
+                .select(&scripts)
+                .next()
+                .context("missing script")?
+                .text()
+                .collect::<String>(),
+            json
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn homepage_search_keeps_authored_introduction_without_repeating_sections() -> Result<()> {
+        let page = DocPage {
+            source: "README.md".to_owned(),
+            slug: String::new(),
+            title: "Home".to_owned(),
+            group: MenuGroup::Learn,
+        };
+        let rendered = render_markdown(
+            "# ReGen\n\nAuthored introduction.\n\n## Features\n\nOffline generation.\n",
+            &page,
+            Path::new(env!("CARGO_MANIFEST_DIR")),
+            &BTreeMap::new(),
+        )?;
+        let entries: Vec<_> = [&rendered.introduction_html, &rendered.body_html]
+            .into_iter()
+            .flat_map(|html| {
+                search_sections(&page, &route("/regen", ""), &rendered.heading_id, html)
+            })
+            .collect();
+        assert_eq!(
+            entries
+                .iter()
+                .map(|entry| (entry.url.as_str(), entry.text.as_str()))
+                .collect::<Vec<_>>(),
+            [
+                ("/regen/#regen", "Authored introduction."),
+                ("/regen/#features", "Offline generation."),
+            ]
+        );
+        Ok(())
+    }
 
     fn output_files(root: &Path) -> Result<BTreeMap<String, Vec<u8>>> {
         let mut files = BTreeMap::new();

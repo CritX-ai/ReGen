@@ -86,6 +86,11 @@ fn css_configuration_removes_only_listed_symbols_and_rejects_bad_rebuilds_atomic
          #unlisted { opacity: 1; }\
          @keyframes unlisted-motion { from { opacity: 0; } to { opacity: 1; } }",
     );
+    fs::rename(
+        site.path().join("assets/site.css"),
+        site.path().join("assets/Site.CSS"),
+    )
+    .unwrap();
     regen::build_with_options(
         site.path(),
         &regen::BuildOptions {
@@ -94,7 +99,7 @@ fn css_configuration_removes_only_listed_symbols_and_rejects_bad_rebuilds_atomic
         },
     )
     .unwrap();
-    let compact = emitted_asset(site.path(), "site.css");
+    let compact = emitted_asset(site.path(), "Site.CSS");
     assert!(compact.contains("color:red;color:#00f"));
     assert!(compact.contains(".dead"));
 
@@ -112,14 +117,14 @@ fn css_configuration_removes_only_listed_symbols_and_rejects_bad_rebuilds_atomic
         },
     )
     .unwrap();
-    let optimized = emitted_asset(site.path(), "site.css");
+    let optimized = emitted_asset(site.path(), "Site.CSS");
     assert!(optimized.contains(".kept"));
     assert!(!optimized.contains("color:red"));
     assert!(!optimized.contains(".dead"));
     assert!(optimized.contains("#unlisted"));
     assert!(optimized.contains("unlisted-motion"));
 
-    fs::write(site.path().join("assets/site.css"), "}").unwrap();
+    fs::write(site.path().join("assets/Site.CSS"), "}").unwrap();
     assert_failed_rebuild_preserves_output(site.path());
 }
 
@@ -131,6 +136,11 @@ fn javascript_configuration_controls_compression_and_rejects_bad_rebuilds_atomic
         "/*! leading notice */ var publicAnswer = 6 * 7; debugger;\
          console.log(argumentEffect()); effectful(); //! @license trailing notice\n",
     );
+    fs::rename(
+        site.path().join("assets/site.js"),
+        site.path().join("assets/Script.JS"),
+    )
+    .unwrap();
     regen::build_with_options(
         site.path(),
         &regen::BuildOptions {
@@ -139,7 +149,7 @@ fn javascript_configuration_controls_compression_and_rejects_bad_rebuilds_atomic
         },
     )
     .unwrap();
-    let compact = emitted_asset(site.path(), "site.js");
+    let compact = emitted_asset(site.path(), "Script.JS");
     assert!(compact.contains("6*7"));
     assert!(compact.contains("debugger"));
     assert!(compact.contains("console.log(argumentEffect())"));
@@ -158,7 +168,7 @@ fn javascript_configuration_controls_compression_and_rejects_bad_rebuilds_atomic
         },
     )
     .unwrap();
-    let compressed = emitted_asset(site.path(), "site.js");
+    let compressed = emitted_asset(site.path(), "Script.JS");
     assert!(compressed.contains("publicAnswer=42"));
     assert!(!compressed.contains("debugger"));
     assert!(!compressed.contains("console.log"));
@@ -169,7 +179,7 @@ fn javascript_configuration_controls_compression_and_rejects_bad_rebuilds_atomic
         assert!(output.contains("trailing notice"));
     }
 
-    fs::write(site.path().join("assets/site.js"), "export function {").unwrap();
+    fs::write(site.path().join("assets/Script.JS"), "export function {").unwrap();
     assert_failed_rebuild_preserves_output(site.path());
 }
 

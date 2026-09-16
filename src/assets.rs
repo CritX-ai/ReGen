@@ -63,7 +63,9 @@ pub(crate) fn prepare(
         let _ = (minify, minify_assets, regression_checks);
         let optimized: Option<String> = match source.extension().and_then(|value| value.to_str()) {
             #[cfg(feature = "minify-css")]
-            Some("css") if minify_assets && minify.css => {
+            Some(extension)
+                if minify_assets && minify.css && extension.eq_ignore_ascii_case("css") =>
+            {
                 let text = read_text(source)?;
                 let optimized = optimize_css(&text, &minify.css_options)
                     .with_context(|| format!("cannot optimize {name}"))?;
@@ -83,9 +85,14 @@ pub(crate) fn prepare(
                 Some(optimized)
             }
             #[cfg(feature = "minify-js")]
-            Some(extension @ ("js" | "mjs")) if minify_assets && minify.js => {
+            Some(extension)
+                if minify_assets
+                    && minify.js
+                    && (extension.eq_ignore_ascii_case("js")
+                        || extension.eq_ignore_ascii_case("mjs")) =>
+            {
                 let text = read_text(source)?;
-                let module = extension == "mjs";
+                let module = extension.eq_ignore_ascii_case("mjs");
                 let optimized = optimize_js(&text, module, &minify.js_options)
                     .with_context(|| format!("cannot optimize {name}"))?;
                 if regression_checks != RegressionCheckMode::Off {

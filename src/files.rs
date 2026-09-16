@@ -6,6 +6,8 @@
 //! callers must keep the site tree stable between inspection and filesystem access.
 
 use anyhow::{Context, Result, bail, ensure};
+use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufReader, Read, Write};
 #[cfg(windows)]
@@ -16,7 +18,7 @@ use walkdir::WalkDir;
 /// Per-file UTF-8 input bound; binary assets are streamed without this text limit.
 const TEXT_LIMIT: u64 = 8 * 1024 * 1024;
 
-/// A portable URL/file alphabet prevents aliases on case-insensitive filesystems.
+/// Keep path components portable without changing their authored case.
 pub(crate) fn portable_path(path: &str) -> Result<()> {
     ensure!(!path.is_empty(), "path must not be empty");
     for part in path.split('/') {
@@ -26,19 +28,63 @@ pub(crate) fn portable_path(path: &str) -> Result<()> {
                 && !part.ends_with('.')
                 && part
                     .bytes()
-                    .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b"-_.".contains(&b)),
-            "non-portable path: {path}; use lowercase ASCII letters, digits, '-', '_' and '.' in normal path segments"
+                    .all(|b| b.is_ascii_alphanumeric() || b"-_.".contains(&b)),
+            "non-portable path: {path}; use ASCII letters, digits, '-', '_' and '.' in normal path segments"
         );
         let stem = part.split('.').next().unwrap_or_default();
         ensure!(
-            !matches!(stem, "con" | "prn" | "aux" | "nul")
+            !["con", "prn", "aux", "nul"]
+                .iter()
+                .any(|reserved| stem.eq_ignore_ascii_case(reserved))
                 && !(stem.len() == 4
-                    && (stem.starts_with("com") || stem.starts_with("lpt"))
+                    && (stem[..3].eq_ignore_ascii_case("com")
+                        || stem[..3].eq_ignore_ascii_case("lpt"))
                     && matches!(stem.as_bytes()[3], b'1'..=b'9')),
             "reserved Windows path: {path}"
         );
     }
     Ok(())
+}
+
+/// Preserve one spelling for every relative path prefix, on every host filesystem.
+///
+/// Exact duplicates retain their existing route/exclusive-creation checks. Lowercase
+/// spellings reuse the map key rather than allocating a second copy.
+#[derive(Default)]
+pub(crate) struct PathCases {
+    spellings: BTreeMap<String, Option<String>>,
+}
+
+impl PathCases {
+    pub(crate) fn insert(&mut self, path: &str) -> Result<()> {
+        portable_path(path)?;
+        let folded = if path.bytes().any(|byte| byte.is_ascii_uppercase()) {
+            Cow::Owned(path.to_ascii_lowercase())
+        } else {
+            Cow::Borrowed(path)
+        };
+        for end in path
+            .match_indices('/')
+            .map(|(offset, _)| offset)
+            .chain(std::iter::once(path.len()))
+        {
+            let spelling = &path[..end];
+            let key = &folded[..end];
+            if let Some(previous) = self.spellings.get(key) {
+                let previous = previous.as_deref().unwrap_or(key);
+                ensure!(
+                    previous == spelling,
+                    "case-insensitive path collision: {previous:?} and {spelling:?}"
+                );
+            } else {
+                self.spellings.insert(
+                    key.to_owned(),
+                    (spelling != key).then(|| spelling.to_owned()),
+                );
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Reject symlinks in every component, returning `None` at the first missing one.
@@ -109,6 +155,7 @@ pub(crate) fn visit_tree(
         "required directory missing: {}",
         root.display()
     );
+    let mut cases = PathCases::default();
     for entry in WalkDir::new(root).follow_links(false).sort_by_file_name() {
         let entry = entry.with_context(|| format!("cannot walk {}", root.display()))?;
         if entry.path() == root {
@@ -122,7 +169,7 @@ pub(crate) fn visit_tree(
             .to_str()
             .context("paths must be UTF-8")?
             .replace(std::path::MAIN_SEPARATOR, "/");
-        portable_path(&relative)?;
+        cases.insert(&relative)?;
         let kind = entry.file_type();
         ensure!(
             kind.is_file() || kind.is_dir(),
