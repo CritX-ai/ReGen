@@ -15,7 +15,7 @@ case "${1:-}" in
     ;;
   install)
     rustup toolchain install 1.98.1 --profile minimal
-    cargo +1.98.1 install regen-ssg --version 1.1.0 --locked
+    cargo +1.98.1 install regen-ssg --version 1.1.1 --locked
     npm ci
     ;;
   build)

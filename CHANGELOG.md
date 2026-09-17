@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1
+
+- Documentation: move grouped navigation from the sidebar to header panels, with hover on desktop and a raised mobile Documentation menu; make build-reference configuration headings shareable; align the CI and coverage badges; and straighten architecture routes with clearer node contrast.
+
+
 ## 1.1.0
 
 - Build profiles, separate review output and tunable HTML/CSS/JavaScript minification, with enforced or warning-only regression checks.

@@ -85,7 +85,7 @@ podman run --rm --network none --read-only \
   --read-only-tmpfs=false \
   --userns keep-id --user "$(id -u):$(id -g)" \
   -v "$PWD:/site:rw,Z" \
-  ghcr.io/critx-ai/regen-ssg:v1.1.0
+  ghcr.io/critx-ai/regen-ssg:v1.1.1
 ```
 
 Use rootless Podman. `keep-id` preserves your user identity; `:Z` gives SELinux a private mount label.
@@ -98,7 +98,7 @@ Use rootless Podman. `keep-id` preserves your user identity; `:Z` gives SELinux 
 docker run --rm --network none --read-only \
   --user "$(id -u):$(id -g)" \
   -v "$PWD:/site:rw" \
-  ghcr.io/critx-ai/regen-ssg:v1.1.0
+  ghcr.io/critx-ai/regen-ssg:v1.1.1
 ```
 
 The user mapping avoids root-owned output files. Docker Desktop users can omit `--user`.
@@ -119,7 +119,7 @@ Save this as `Containerfile` in its own directory. The compiler and ReGen releas
 
 ```dockerfile
 FROM docker.io/library/rust:1.98.1-bookworm@sha256:9a73a5088750b4c95158ab26629c854c3d6fc4b173cb7bc8079ad252d8ed7bfa
-RUN cargo install regen-ssg --version 1.1.0 --locked --features hooks
+RUN cargo install regen-ssg --version 1.1.1 --locked --features hooks
 WORKDIR /site
 USER 65532:65532
 ENTRYPOINT ["regen"]
@@ -136,6 +136,6 @@ This custom image retains Rust and the downloaded crate sources. Add any other t
 
 ## Optional example
 
-Download the bilingual example as a [ZIP](https://github.com/CritX-ai/ReGen/releases/download/v1.1.0/regen-example-1.1.0.zip) or [tar.gz](https://github.com/CritX-ai/ReGen/releases/download/v1.1.0/regen-example-1.1.0.tar.gz). Both unpack to `regen-example-1.1.0/` and contain the [minimal site](../examples/minimal) plus `LICENSE`.
+Download the bilingual example as a [ZIP](https://github.com/CritX-ai/ReGen/releases/download/v1.1.1/regen-example-1.1.1.zip) or [tar.gz](https://github.com/CritX-ai/ReGen/releases/download/v1.1.1/regen-example-1.1.1.tar.gz). Both unpack to `regen-example-1.1.1/` and contain the [minimal site](../examples/minimal) plus `LICENSE`.
 
-Verify the download against the [release's `SHA256SUMS`](https://github.com/CritX-ai/ReGen/releases/tag/v1.1.0), then follow the [quickstart](../README.md#quickstart) and [authoring guide](guide.md).
+Verify the download against the [release's `SHA256SUMS`](https://github.com/CritX-ai/ReGen/releases/tag/v1.1.1), then follow the [quickstart](../README.md#quickstart) and [authoring guide](guide.md).

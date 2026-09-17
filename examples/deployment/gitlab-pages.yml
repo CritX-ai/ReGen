@@ -10,7 +10,7 @@ deploy-pages:
   image: rust:1.98.1-bookworm
   stage: deploy
   script:
-    - cargo +1.98.1 install regen-ssg --version 1.1.0 --locked
+    - cargo +1.98.1 install regen-ssg --version 1.1.1 --locked
     - regen build --site . --profile release
   pages:
     publish: dist

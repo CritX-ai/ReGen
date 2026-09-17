@@ -24,7 +24,19 @@
       <span class="brand-name">CritX</span>
       <span class="brand-product">ReGen <span class="brand-description">Documentation</span></span>
     </a>
-    <nav class="header-links" aria-label="Project">
+    <nav class="header-links" aria-label="Documentation">
+      {% for group in site.menu %}
+      <div class="header-menu">
+        <details name="header-nav">
+          <summary{% if group.title == page.data.menu_group %} class="current"{% endif %}>{{ group.title }}</summary>
+        </details>
+        <ul class="menu">
+          {% for item in group.items %}
+          <li><a href="{{ item.path }}"{% if item.path == current_path %} aria-current="page"{% endif %}>{{ item.title }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
       <button id="docs-search-open" class="docs-search-button" type="button" aria-haspopup="dialog" aria-controls="docs-search-dialog" aria-keyshortcuts="Control+k Meta+k" hidden>Search</button>
       <a class="repository-link" href="{{ site.repository_url }}" aria-label="ReGen on GitHub" title="ReGen on GitHub"><img src="{{ asset_base }}/github-mark.svg" width="24" height="24" alt=""></a>
     </nav>
@@ -66,21 +78,8 @@
         </ul>
       </nav>
       {% endif %}
-      <nav class="global-navigation" aria-label="Documentation">
-        <h2 class="nav-title">Documentation</h2>
-        {% for group in site.menu %}
-        <details class="nav-group"{% if group.title == page.data.menu_group %} open{% endif %}>
-          <summary>{{ group.title }}</summary>
-          <ul class="menu">
-            {% for item in group.items %}
-            <li><a href="{{ item.path }}"{% if item.path == current_path %} aria-current="page"{% endif %}>{{ item.title }}</a></li>
-            {% endfor %}
-          </ul>
-        </details>
-        {% endfor %}
-      </nav>
-    </aside>
 
+    </aside>
     <main id="content" tabindex="-1">
       <article>
         <header class="page-header">
@@ -118,6 +117,7 @@
             <a href="https://github.com/CritX-ai/ReGen/releases/latest"><img src="https://img.shields.io/github/v/release/CritX-ai/ReGen?label=GitHub&amp;style=flat-square" alt="GitHub release" height="20"></a>
             <a href="https://crates.io/crates/regen-ssg"><img src="https://img.shields.io/crates/v/regen-ssg?label=crates.io&amp;style=flat-square" alt="crates.io release" height="20"></a>
             <a href="https://github.com/orgs/CritX-ai/packages/container/package/regen-ssg"><img src="https://img.shields.io/badge/GHCR-container-blue?logo=github&amp;style=flat-square" alt="GHCR container image" height="20"></a>
+            <a href="https://github.com/CritX-ai/ReGen/actions/workflows/build.yml?query=branch%3Amain"><img src="https://img.shields.io/github/actions/workflow/status/CritX-ai/ReGen/build.yml?branch=main&amp;label=CI&amp;style=flat-square" alt="CI status for main" height="20"></a>
             <a href="https://github.com/CritX-ai/ReGen/actions/workflows/build.yml?query=branch%3Amain"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fregen.critx.ai%2Fcoverage.json&amp;style=flat-square" alt="Rust line coverage from verified main CI" height="20"></a>
           </p>
           {% endif %}

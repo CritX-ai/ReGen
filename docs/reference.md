@@ -60,9 +60,9 @@ code = "de"
 name = "Deutsch"
 ```
 
-### Site — `[site]`
+### Site settings
 
-These settings describe the whole site:
+Settings in the `[site]` table describe the whole site:
 
 | Field | Type / default | Meaning |
 | --- | --- | --- |
@@ -70,9 +70,9 @@ These settings describe the whole site:
 | `base_url` | Required string | Absolute HTTP(S) origin and optional hosting prefix, such as `/ReGen/` |
 | `default_language` | Required string | Configured language served without a language prefix |
 
-### Languages — `[[languages]]`
+### Languages
 
-Declare one table per language, including the default language:
+Declare one `[[languages]]` table per language, including the default language:
 
 | Field | Type / default | Meaning |
 | --- | --- | --- |
@@ -80,9 +80,9 @@ Declare one table per language, including the default language:
 | `name` | Required string | Authored display name |
 | `direction` | String; `ltr` | `ltr` or `rtl` |
 
-### Common build settings — `[build]`
+### Common build settings
 
-Choose the default profile and a shared regression-check policy here:
+Choose the default profile and a shared regression-check policy in the optional `[build]` table:
 
 | Field | Type / default | Meaning |
 | --- | --- | --- |
@@ -91,7 +91,9 @@ Choose the default profile and a shared regression-check policy here:
 
 The child tables below provide common settings before profile overrides.
 
-#### Minification — `[build.minify]`
+#### Minification
+
+The `[build.minify]` table selects language processing; child option tables tune each engine:
 
 | Field / child table | Type / default | Meaning |
 | --- | --- | --- |
@@ -104,13 +106,17 @@ The child tables below provide common settings before profile overrides.
 
 For example, common CSS options belong in `[build.minify.css_options]`.
 
-#### Assets — `[build.assets]`
+#### Assets
+
+The `[build.assets]` table gates processing of files under `assets/`:
 
 | Field | Type / default | Meaning |
 | --- | --- | --- |
 | `minify` | Optional boolean; inherited | Permit enabled CSS/JS processing; does not activate minifiers, transform bytes by itself or disable hashing |
 
-#### Hooks — `[build.hooks]`
+#### Hooks
+
+Hook lists under `[build.hooks]` order trusted commands:
 
 | Field | Type / default | Meaning |
 | --- | --- | --- |
@@ -157,15 +163,15 @@ ReGen preserves ASCII case in filenames, folders and slugs: `public/CNAME`, `ass
 
 - Use letters (`A–Z`, `a–z`), digits, `-`, `_` and `.`; `/` separates folders. Leading/trailing dots, traversal and Windows device names such as `CON` or `COM1.txt` are rejected.
 - Names must also be unique when compared without case. `Guide/one` and `guide/two` conflict at the folder level, even though their last segments differ. These checks keep the output consistent on case-sensitive and case-insensitive filesystems.
-- File types recognize `.yaml`, `.html`, `.css`, `.js` and `.mjs` regardless of extension case. Required layout names such as `regen.toml`, `site.yaml` and `pages/` retain their documented spelling. [Language codes](#languages--languages) have their own lowercase format.
+- File types recognize `.yaml`, `.html`, `.css`, `.js` and `.mjs` regardless of extension case. Required layout names such as `regen.toml`, `site.yaml` and `pages/` retain their documented spelling. [Language codes](#languages) have their own lowercase format.
 
 Unicode is welcome in page text and metadata.
 
 ### Profiles and precedence
 
-#### Profile fields — `[profiles.NAME]`
+#### Profile fields
 
-Profiles select build settings, not site content or URLs:
+Fields under `[profiles.NAME]` select build settings, not site content or URLs:
 
 | Field | Type / default | Meaning |
 | --- | --- | --- |

@@ -265,7 +265,7 @@ fn build(arguments: Arguments, options: &regen::BuildOptions<'_>) -> Result<()> 
         .map(|group| {
             let items: Vec<_> = pages
                 .iter()
-                .filter(|page| page.group == group)
+                .filter(|page| page.group == group && !page.slug.is_empty())
                 .map(|page| json!({"title": page.title, "path": routes[page.source.as_str()]}))
                 .collect();
             json!({"title": group, "items": items})

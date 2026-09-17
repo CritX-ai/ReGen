@@ -27,6 +27,7 @@ LIVE_BADGES = {
     "https://img.shields.io/github/v/release/CritX-ai/ReGen?label=GitHub&style=flat-square",
     "https://img.shields.io/crates/v/regen-ssg?label=crates.io&style=flat-square",
     "https://img.shields.io/badge/GHCR-container-blue?logo=github&style=flat-square",
+    "https://img.shields.io/github/actions/workflow/status/CritX-ai/ReGen/build.yml?branch=main&label=CI&style=flat-square",
     "https://img.shields.io/endpoint?url=https%3A%2F%2Fregen.critx.ai%2Fcoverage.json&style=flat-square",
 }
 VOID_ELEMENTS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}

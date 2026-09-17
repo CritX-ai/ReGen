@@ -1,6 +1,6 @@
 [package]
 name = "regen-ssg"
-version = "1.1.0"
+version = "1.1.1"
 edition = "2024"
 rust-version = "1.98.1"
 description = "Opinionated, reproducible multilingual static site generation with Tera and YAML"

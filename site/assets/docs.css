@@ -71,9 +71,26 @@ a:hover { color: var(--cyan-bright); text-decoration-thickness: 2px; }
 .repository-link { justify-content: center; width: 44px; }
 .repository-link:hover { background: var(--raised); }
 .repository-link img { display: block; }
+/* Top-bar documentation menus: native exclusive disclosures, no JavaScript. */
+.header-menu { position: relative; }
+.header-menu > details > summary { display: flex; align-items: center; gap: 0.45rem; min-height: 44px; padding: 0 0.35rem; list-style: none; color: var(--silver); font: 600 0.9rem/1.3 var(--display); cursor: pointer; }
+.header-menu > details > summary::-webkit-details-marker { display: none; }
+.header-menu > details > summary::after { content: ""; flex: none; width: 6px; height: 6px; margin-block-start: -3px; border-block-end: 1px solid currentColor; border-inline-end: 1px solid currentColor; transform: rotate(45deg); }
+.header-menu > details[open] > summary::after { margin-block-start: 3px; transform: rotate(225deg); }
+.header-menu > details > summary.current { color: var(--orange); }
+.header-menu:hover > details > summary, .header-menu:focus-within > details > summary, .header-menu > details[open] > summary { color: var(--cyan-bright); text-decoration: none; }
+.header-menu > details[open] > summary { margin-block-end: 0; }
+/* The panel is outside the disclosure so browser closed-disclosure styles cannot suppress hover reveal. It meets the trigger edge so pointer travel cannot close it. */
+.header-menu:hover > details > summary::after, .header-menu:focus-within > details > summary::after { margin-block-start: 3px; transform: rotate(225deg); }
+.header-menu:hover > .menu, .header-menu:focus-within > .menu, .header-menu > details[open] + .menu { display: block; }
+.header-menu > .menu { display: none; }
+.header-menu > .menu { position: absolute; z-index: 6; inset-inline-end: 0; top: 100%; min-width: 13.5rem; margin: 0; padding: 0.25rem 0; background: var(--surface); border: 1px solid var(--rule-strong); }
 .release-badges { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-block: 1.5rem 0; }
 .release-badges a { display: inline-flex; align-items: center; min-height: 44px; }
 .release-badges img { display: block; height: 20px; }
+@media (min-width: 80rem) {
+  .home-page .release-badges { grid-column: 1 / -1; }
+}
 
 /* Search is a local enhancement; the reading surface remains script-independent. */
 .docs-search-button { min-height: 44px; padding: 0.5rem 0.75rem; border: 1px solid var(--rule-strong); border-radius: 0; background: transparent; color: var(--silver); font: inherit; cursor: pointer; }
@@ -104,14 +121,15 @@ a:hover { color: var(--cyan-bright); text-decoration-thickness: 2px; }
 .nav-title { margin: 0 0 0.75rem; color: var(--silver); font-family: var(--display); font-size: 0.9rem; font-weight: 600; line-height: 1.4; }
 .menu, .toc { margin: 0; padding: 0; list-style: none; }
 .menu a { display: flex; align-items: center; min-height: 44px; padding: 0.5rem 0.75rem; border-inline-start: 1px solid transparent; text-decoration: none; line-height: 1.4; overflow-wrap: anywhere; }
-.menu a:hover { background: var(--surface); border-inline-start-color: var(--cyan); }
+.sidebar .menu a:hover { background: var(--surface); border-inline-start-color: var(--cyan); }
+.header-menu .menu a { background: none; }
+.header-menu .menu a:hover { border-inline-start-color: var(--cyan); color: var(--cyan-bright); }
 .menu [aria-current="page"] { background: var(--raised); border-inline-start-color: var(--orange); color: var(--orange); font-weight: 600; }
 .menu [aria-current="page"]::after { content: ""; flex: none; width: 5px; height: 5px; margin-inline-start: auto; margin-inline-end: 0.15rem; background: currentColor; }
 .nav-group > summary { padding-block: 0.5rem; font-family: var(--display); font-size: 0.9rem; line-height: 1.4; }
 .nav-group[open] { margin-block-end: 0.75rem; }
 .nav-group[open] > summary { margin-block-end: 0.25rem; }
 .nav-group .menu { padding-inline-start: 0.5rem; }
-.page-contents + .global-navigation { margin-block-start: 1.75rem; padding-block-start: 1.5rem; border-block-start: 1px solid var(--rule); }
 .toc a { display: flex; align-items: center; min-height: 44px; padding-block: 0.4rem; padding-inline: 0.25rem; line-height: 1.45; overflow-wrap: anywhere; text-decoration: none; }
 .toc a:hover { text-decoration: underline; }
 .toc-level-3 { padding-inline-start: 0.75rem; font-size: 0.95em; }
@@ -120,6 +138,7 @@ a:hover { color: var(--cyan-bright); text-decoration-thickness: 2px; }
 
 main { min-width: 0; }
 main:focus { outline: none; }
+
 main:focus-visible { outline: 2px solid var(--cyan-bright); outline-offset: 8px; }
 .page-header { margin-block-end: 2rem; padding-block-end: 1.75rem; border-block-end: 1px solid var(--rule); }
 h1, .prose h2, .prose h3, .prose h4 { font-family: var(--display); text-wrap: balance; }
@@ -172,6 +191,9 @@ h1 { margin: 0; font-size: clamp(2.25rem, 4.5vw, 3.75rem); font-weight: 700; lin
   .lead-curtain-opening:hover .confetti-replay .confetti-piece { animation: regen-confetti-sprinkle 1.2s ease-out calc(2.6s + var(--confetti-delay)) 1 both; }
 }
 @media print {
+  .header-menu > details[open] + .menu, .header-menu > .menu { position: static; display: block; border: 0; background: none; }
+  .header-menu > details > summary { display: none; }
+  .header-menu .menu a, .header-menu .menu a:hover { color: inherit; }
   .lead-curtain-opening { color: var(--white); }
   .lead-curtain-scene { display: none; }
 }
@@ -323,7 +345,7 @@ code, pre, kbd, samp { font-family: var(--mono); }
 .architecture-crates a { display: inline-flex; align-items: center; min-height: 44px; color: var(--dependency-color); font-size: 0.9rem; }
 .architecture-dependency-note { display: block; font-size: 0.8rem; }
 .architecture-dependency-note + .architecture-dependency-note { margin-block-start: 0.35rem; }
-.architecture-map { display: block; width: 100%; height: auto; overflow: visible; }
+.architecture-map .architecture-svg-note { font: 400 12px var(--mono); letter-spacing: 0.08em; fill: #93aab4; }
 .architecture-map-narrow { display: none; }
 .architecture-map text { fill: var(--white); stroke: none; font: 500 19px var(--sans); }
 .architecture-map .architecture-svg-note { font: 400 12px var(--mono); letter-spacing: 0.08em; fill: #8aa2aa; }
@@ -335,9 +357,8 @@ code, pre, kbd, samp { font-family: var(--mono); }
 #architecture-success-arrow path { fill: var(--arch-green); }
 .architecture-wire-failure { stroke: var(--arch-error); stroke-dasharray: 4 4; }
 .architecture-wire-success { stroke: var(--arch-green); }
-.architecture-route-labels .architecture-svg-note { fill: var(--arch-error); letter-spacing: 0; }
+.architecture-svg-source, .architecture-svg-gate, .architecture-svg-route, .architecture-svg-stage, .architecture-svg-output { fill: #0d161d; stroke: #6b8591; stroke-width: 1.25; }
 .architecture-map .architecture-success-label { fill: var(--arch-green); letter-spacing: 0; }
-.architecture-svg-source, .architecture-svg-gate, .architecture-svg-route, .architecture-svg-stage, .architecture-svg-output { fill: #0a141a; stroke: #58737e; stroke-width: 1.25; }
 .architecture-svg-gate { stroke: var(--arch-orange); }
 .architecture-svg-route, .architecture-svg-stage { stroke: var(--arch-cyan); }
 .architecture-svg-output { stroke: var(--arch-green); }
@@ -416,15 +437,20 @@ details[open] > summary { margin-block-end: 0.5rem; }
   .sidebar { padding-inline-end: 0.75rem; }
 }
 
-
 @media (max-width: 56rem) {
   .site-header { gap: 0.75rem 1.5rem; padding-block: 1rem; }
+  .header-menu { display: none; }
   .reading-layout { display: block; margin-block: 2rem 3rem; }
   .sidebar { display: none; }
   .mobile-menu, .mobile-contents { display: block; font-size: 0.85rem; border-block-end: 1px solid var(--rule-strong); }
-  .mobile-menu nav { padding-block: 0.25rem 1rem; }
+  .mobile-menu > summary { display: flex; align-items: center; justify-content: space-between; min-height: 52px; padding: 0.75rem 1rem; border-block-start: 1px solid var(--rule-strong); border-inline-start: 1px solid var(--cyan); background: var(--raised); color: var(--white); font-family: var(--display); font-size: 0.95rem; font-weight: 600; line-height: 1.3; list-style: none; }
+  .mobile-menu > summary::-webkit-details-marker { display: none; }
+  .mobile-menu > summary::after { content: ""; flex: none; width: 7px; height: 7px; margin-block-start: -3px; border-block-end: 1px solid currentColor; border-inline-end: 1px solid currentColor; transform: rotate(45deg); }
+  .mobile-menu > summary:hover { background: var(--raised); color: var(--cyan-bright); text-decoration: none; }
+  .mobile-menu[open] > summary { margin-block-end: 0; border-block-end: 1px solid var(--rule); color: var(--cyan-bright); }
+  .mobile-menu[open] > summary::after { margin-block-start: 3px; transform: rotate(225deg); }
+  .mobile-menu nav { padding: 0.25rem 1rem 1rem; background: var(--surface); }
   .mobile-menu .menu a { padding-block: 0.65rem; }
-  .mobile-contents { margin-block: -0.5rem 2rem; border-block-start: 1px solid var(--rule); }
   .page-header:has(+ .mobile-contents) { margin-block-end: 0; }
   .page-header + .mobile-contents { margin-block-start: 0; border-block-start: 0; }
   .mobile-contents .toc { padding-block: 0.25rem 0.75rem; }

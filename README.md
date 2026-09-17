@@ -28,13 +28,13 @@ With [Rust](https://rustup.rs/) and a native linker installed:
 cargo install regen-ssg --version 1 --locked
 ```
 
-Download the [minimal example ZIP](https://github.com/CritX-ai/ReGen/releases/download/v1.1.0/regen-example-1.1.0.zip) and extract `regen-example-1.1.0/`.
+Download the [minimal example ZIP](https://github.com/CritX-ai/ReGen/releases/download/v1.1.1/regen-example-1.1.1.zip) and extract `regen-example-1.1.1/`.
 
 ```sh
-regen build --site regen-example-1.1.0
+regen build --site regen-example-1.1.1
 ```
 
-The build writes English and German pages into `regen-example-1.1.0/dist/`. [Edit the localized content](docs/guide.md#localized-yaml), rebuild, and [preview locally](docs/guide.md#preview-locally-with-caddy).
+The build writes English and German pages into `regen-example-1.1.1/dist/`. [Edit the localized content](docs/guide.md#localized-yaml), rebuild, and [preview locally](docs/guide.md#preview-locally-with-caddy).
 
 Rather skip the compiler? Use [cargo-binstall](docs/releasing.md#cargo-binstall), a [native binary](docs/releasing.md#native-binaries) or a [container](docs/releasing.md#container-image).
 
@@ -42,6 +42,7 @@ Rather skip the compiler? Use [cargo-binstall](docs/releasing.md#cargo-binstall)
 
 ReGen already builds real sites:
 
+- **[LedAlert Field Manual](https://alert.critx.ai/)** — Documentation for LedAlert, another CritX project for spatial desktop notifications using WLED
 - **[jan.toennemann.net](https://jan.toennemann.net/)** — a bilingual portfolio of values, photography, music and research.
 - **[ReGen's documentation](https://regen.critx.ai/)** — built by the tool it explains. [See the source](examples/build_docs.rs).
 
